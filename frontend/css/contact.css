@@ -1,0 +1,69 @@
+/* CONTACT PAGE CSS */
+.page-hero {
+  position: relative; height: 50vh; min-height: 380px;
+  display: flex; align-items: flex-end; overflow: hidden;
+}
+.page-hero-bg { position: absolute; inset: 0; }
+.page-hero-bg img { width: 100%; height: 100%; object-fit: cover; }
+.page-hero-content { position: relative; z-index: 1; padding-top: 7rem; padding-bottom: 4rem; }
+.page-hero-content h1 { color: var(--white); }
+.page-hero-content p { max-width: 55ch; margin-top: 1rem; }
+
+.contact-layout {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 4rem;
+  align-items: start;
+}
+
+/* Form */
+.contact-form-wrap {
+  background: var(--navy-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 3rem;
+  box-shadow: var(--shadow-card);
+  background-image: linear-gradient(135deg, rgba(255,255,255,0.02) 0%, transparent 60%);
+}
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+.form-textarea { resize: vertical; min-height: 130px; }
+.contact-submit { width: 100%; justify-content: center; padding: 1rem; font-size: 0.82rem; }
+.form-note { font-size: 0.78rem; color: var(--text-muted); text-align: center; }
+
+/* Info Card */
+.contact-info-card {
+  background: var(--navy-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 2.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: var(--shadow-card);
+}
+.contact-info-items { display: flex; flex-direction: column; gap: 1.75rem; }
+.contact-info-item { display: flex; gap: 1rem; align-items: flex-start; }
+.contact-info-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 2px; }
+.contact-info-label { font-size: 0.68rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--gold); margin-bottom: 0.35rem; }
+.contact-info-value { font-size: 0.9rem; color: var(--text-muted); line-height: 1.6; }
+
+.wa-cta-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  background: #25D366;
+  color: white;
+  border-radius: var(--radius-md);
+  padding: 1.1rem 1.75rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  letter-spacing: 0.05em;
+  transition: var(--transition);
+  margin-bottom: 1.5rem;
+}
+.wa-cta-btn:hover { background: #1DA851; transform: translateY(-2px); box-shadow: 0 8px 30px rgba(37,211,102,0.3); }
+
+.map-placeholder { border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--border-subtle); }
+
+@media (max-width: 900px) {
+  .contact-layout { grid-template-columns: 1fr; }
+  .form-row { grid-template-columns: 1fr; }
+}

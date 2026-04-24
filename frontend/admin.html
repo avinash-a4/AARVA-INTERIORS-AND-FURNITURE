@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Panel – AARAV Interiors</title>
+  <link rel="stylesheet" href="css/design-system.css" />
+  <link rel="stylesheet" href="css/dashboard.css" />
+  <link rel="stylesheet" href="css/admin.css" />
+  <link rel="icon" type="image/jpeg" href="../assets/images/logo.jpeg" />
+</head>
+<body class="dashboard-body">
+
+<!-- Admin Sidebar -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <a href="index.html" class="sidebar-logo">
+      <img src="../assets/images/logo.jpeg" alt="AARAV" />
+      <span>ADMIN <span class="text-gold">PANEL</span></span>
+    </a>
+  </div>
+  <nav class="sidebar-nav">
+    <button class="sidebar-link active" onclick="showAdminPanel('clients')" id="anav-clients">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+      Clients
+    </button>
+    <button class="sidebar-link" onclick="showAdminPanel('projects')" id="anav-projects">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      Projects
+    </button>
+    <button class="sidebar-link" onclick="showAdminPanel('designs-upload')" id="anav-designs-upload">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0018 9h-1.26A8 8 0 103 16.3"/></svg>
+      Upload Designs
+    </button>
+    <button class="sidebar-link" onclick="showAdminPanel('payments-admin')" id="anav-payments-admin">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+      Payments
+    </button>
+    <button class="sidebar-link" onclick="showAdminPanel('estimator-config')" id="anav-estimator-config">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+      Estimator Config
+    </button>
+    <div class="sidebar-link" style="margin-top:auto;">
+      <a href="index.html" style="color:inherit;display:flex;gap:0.85rem;align-items:center">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+        View Website
+      </a>
+    </div>
+  </nav>
+  <div class="sidebar-user">
+    <div class="user-avatar">A</div>
+    <div class="user-info"><div class="user-name">Admin User</div><div class="user-role">Administrator</div></div>
+    <button class="logout-btn" onclick="Auth.logout()">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+    </button>
+  </div>
+</aside>
+
+<button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()">☰</button>
+
+<main class="dashboard-main">
+  <header class="dash-topbar">
+    <div class="dash-topbar-left"><h2 class="dash-page-title" id="adminPageTitle">Clients</h2></div>
+    <div class="dash-topbar-right">
+      <span class="badge">Admin</span>
+      <div class="dash-avatar">A</div>
+    </div>
+  </header>
+
+  <!-- ── CLIENTS PANEL ── -->
+  <div class="panel active" id="panel-clients">
+    <div class="admin-header-row">
+      <h3 class="dash-card-title">All Clients</h3>
+      <button class="btn btn-gold" onclick="toggleModal('createClientModal')">+ Add Client</button>
+    </div>
+    <div class="dash-card mt-3">
+      <div class="dash-card-body" style="padding:0">
+        <table class="pay-table admin-table">
+          <thead><tr><th>Client Name</th><th>Email</th><th>Phone</th><th>Project</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="clientsTableBody">
+            <tr><td>Rahul Mehta</td><td>rahul@example.com</td><td>+91 98765 43210</td><td>3BHK Imperial Suite</td><td><span class="status-badge status-active">Active</span></td><td><button class="admin-action-btn" onclick="showToast('Opening client dashboard...','gold')">View</button></td></tr>
+            <tr><td>Priya Sharma</td><td>priya@example.com</td><td>+91 91234 56789</td><td>2BHK – Banjara Hills</td><td><span class="status-badge status-done">Completed</span></td><td><button class="admin-action-btn" onclick="showToast('Opening client dashboard...','gold')">View</button></td></tr>
+            <tr><td>Arjun Reddy</td><td>arjun@example.com</td><td>+91 99001 12345</td><td>4BHK Villa – Gachibowli</td><td><span class="status-badge status-active">In Design</span></td><td><button class="admin-action-btn" onclick="showToast('Opening client dashboard...','gold')">View</button></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Create Client Modal -->
+    <div class="admin-modal hidden" id="createClientModal">
+      <div class="modal-backdrop" onclick="toggleModal('createClientModal')"></div>
+      <div class="modal-box">
+        <div class="modal-header"><h3>Create New Client</h3><button onclick="toggleModal('createClientModal')">✕</button></div>
+        <form class="modal-form" onsubmit="createClient(event)">
+          <div class="form-group"><label class="form-label">Full Name</label><input class="form-input" id="nc_name" placeholder="Client Full Name" required /></div>
+          <div class="form-group"><label class="form-label">Email</label><input type="email" class="form-input" id="nc_email" placeholder="client@example.com" required /></div>
+          <div class="form-group"><label class="form-label">Phone</label><input class="form-input" id="nc_phone" placeholder="+91 98765 00000" /></div>
+          <div class="form-group"><label class="form-label">Temp Password</label><input class="form-input" id="nc_pass" placeholder="Temporary password" required /></div>
+          <button type="submit" class="btn btn-gold" style="width:100%;justify-content:center;margin-top:0.5rem">Create Client Account</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PROJECTS PANEL ── -->
+  <div class="panel" id="panel-projects">
+    <div class="admin-header-row">
+      <h3 class="dash-card-title">All Projects</h3>
+      <button class="btn btn-gold" onclick="toggleModal('createProjectModal')">+ New Project</button>
+    </div>
+    <div class="projects-admin-grid mt-3">
+      <div class="proj-admin-card">
+        <div class="proj-admin-img"><img src="../assets/images/living.png" alt="Project" /></div>
+        <div class="proj-admin-body">
+          <div class="proj-admin-name">3BHK Imperial Suite</div>
+          <div class="proj-admin-client">Client: Rahul Mehta</div>
+          <div class="progress-track mt-2"><div class="progress-labels"><span class="label-text">Progress</span><span class="text-gold">72%</span></div><div class="progress-bar-wrap mt-1"><div class="progress-bar-fill" style="width:72%"></div></div></div>
+          <div class="proj-admin-actions mt-3">
+            <button class="btn btn-outline" style="padding:0.4rem 1rem;font-size:0.7rem" onclick="showToast('Edit project opened','gold')">Edit</button>
+            <button class="btn btn-ghost" style="padding:0.4rem 1rem;font-size:0.7rem" onclick="showToast('Timeline updated','success')">Update Timeline</button>
+          </div>
+        </div>
+      </div>
+      <div class="proj-admin-card">
+        <div class="proj-admin-img"><img src="../assets/images/kitchen.png" alt="Project" /></div>
+        <div class="proj-admin-body">
+          <div class="proj-admin-name">2BHK – Banjara Hills</div>
+          <div class="proj-admin-client">Client: Priya Sharma</div>
+          <div class="progress-track mt-2"><div class="progress-labels"><span class="label-text">Progress</span><span class="text-gold">100%</span></div><div class="progress-bar-wrap mt-1"><div class="progress-bar-fill" style="width:100%;background:#4CAF50"></div></div></div>
+          <div class="proj-admin-actions mt-3">
+            <button class="btn btn-outline" style="padding:0.4rem 1rem;font-size:0.7rem" onclick="showToast('Edit project opened','gold')">Edit</button>
+            <span class="status-badge status-done">Handover Done</span>
+          </div>
+        </div>
+      </div>
+      <div class="proj-admin-card">
+        <div class="proj-admin-img"><img src="../assets/images/bedroom.png" alt="Project" /></div>
+        <div class="proj-admin-body">
+          <div class="proj-admin-name">4BHK Villa – Gachibowli</div>
+          <div class="proj-admin-client">Client: Arjun Reddy</div>
+          <div class="progress-track mt-2"><div class="progress-labels"><span class="label-text">Progress</span><span class="text-gold">25%</span></div><div class="progress-bar-wrap mt-1"><div class="progress-bar-fill" style="width:25%"></div></div></div>
+          <div class="proj-admin-actions mt-3">
+            <button class="btn btn-outline" style="padding:0.4rem 1rem;font-size:0.7rem" onclick="showToast('Edit project opened','gold')">Edit</button>
+            <button class="btn btn-ghost" style="padding:0.4rem 1rem;font-size:0.7rem" onclick="showToast('Timeline updated','success')">Update</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Create Project Modal -->
+    <div class="admin-modal hidden" id="createProjectModal">
+      <div class="modal-backdrop" onclick="toggleModal('createProjectModal')"></div>
+      <div class="modal-box">
+        <div class="modal-header"><h3>Create New Project</h3><button onclick="toggleModal('createProjectModal')">✕</button></div>
+        <form class="modal-form" onsubmit="createProject(event)">
+          <div class="form-group"><label class="form-label">Project Title</label><input class="form-input" id="np_title" placeholder="3BHK – Jubilee Hills" required /></div>
+          <div class="form-group"><label class="form-label">Assign to Client</label>
+            <select class="form-input" id="np_client">
+              <option>Rahul Mehta</option><option>Priya Sharma</option><option>Arjun Reddy</option>
+            </select>
+          </div>
+          <div class="form-group"><label class="form-label">Package</label>
+            <select class="form-input" id="np_pkg"><option>Basic</option><option>Standard</option><option>Premium</option></select>
+          </div>
+          <div class="form-group"><label class="form-label">Start Date</label><input type="date" class="form-input" id="np_date" /></div>
+          <button type="submit" class="btn btn-gold" style="width:100%;justify-content:center;margin-top:0.5rem">Create Project</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── UPLOAD DESIGNS PANEL ── -->
+  <div class="panel" id="panel-designs-upload">
+    <div class="dash-card">
+      <div class="dash-card-header"><h3 class="dash-card-title">Upload Client Designs</h3></div>
+      <div class="dash-card-body">
+        <form class="upload-form" onsubmit="uploadDesign(event)">
+          <div class="form-group"><label class="form-label">Select Client</label>
+            <select class="form-input"><option>Rahul Mehta – 3BHK Imperial</option><option>Arjun Reddy – 4BHK Villa</option></select>
+          </div>
+          <div class="form-group"><label class="form-label">Design Type</label>
+            <select class="form-input"><option>2D Floor Plan</option><option>3D Render</option><option>Site Photo</option><option>Material Board</option></select>
+          </div>
+          <div class="form-group"><label class="form-label">File</label>
+            <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+              <div class="upload-icon">📁</div>
+              <div class="upload-text">Click to browse or drag & drop</div>
+              <div class="upload-subtext">PNG, JPG, PDF up to 20MB</div>
+              <input type="file" id="fileInput" multiple hidden accept="image/*,.pdf" onchange="handleFiles(this.files)" />
+            </div>
+            <div id="uploadedFiles" class="uploaded-list"></div>
+          </div>
+          <div class="form-group"><label class="form-label">Notes (optional)</label><textarea class="form-input" rows="3" placeholder="Any notes for the client..."></textarea></div>
+          <button type="submit" class="btn btn-gold">Upload & Notify Client</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PAYMENTS ADMIN PANEL ── -->
+  <div class="panel" id="panel-payments-admin">
+    <div class="panel-grid-3 mb-4">
+      <div class="stat-card"><div class="stat-card-val text-gold">₹ 42L</div><div class="stat-card-label">Total Revenue</div></div>
+      <div class="stat-card"><div class="stat-card-val" style="color:#4CAF50">₹ 28L</div><div class="stat-card-label">Collected</div></div>
+      <div class="stat-card"><div class="stat-card-val" style="color:#FF6B6B">₹ 14L</div><div class="stat-card-label">Pending</div></div>
+    </div>
+    <div class="dash-card">
+      <div class="dash-card-header"><h3 class="dash-card-title">All Payments</h3><button class="btn btn-gold" style="padding:0.5rem 1rem;font-size:0.72rem" onclick="showToast('Invoice generated!','success')">Generate Invoice</button></div>
+      <div class="dash-card-body" style="padding:0">
+        <table class="pay-table admin-table">
+          <thead><tr><th>Client</th><th>Date</th><th>Amount</th><th>Phase</th><th>Mode</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody>
+            <tr><td>Rahul Mehta</td><td>Mar 1</td><td>₹ 1.4L</td><td>Booking</td><td>Transfer</td><td><span class="status-badge status-done">Paid</span></td><td><button class="admin-action-btn" onclick="showToast('Marked paid','success')">✓</button></td></tr>
+            <tr><td>Rahul Mehta</td><td>Apr 20</td><td>₹ 3.5L</td><td>Phase 2</td><td>UPI</td><td><span class="status-badge status-done">Paid</span></td><td><button class="admin-action-btn" onclick="showToast('Marked paid','success')">✓</button></td></tr>
+            <tr><td>Arjun Reddy</td><td>May 10</td><td>₹ 4.0L</td><td>Phase 1</td><td>—</td><td><span class="status-badge status-active">Pending</span></td><td><button class="admin-action-btn" onclick="showToast('Marked paid!','success')">Mark Paid</button></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ESTIMATOR CONFIG PANEL ── -->
+  <div class="panel" id="panel-estimator-config">
+    <div class="dash-card">
+      <div class="dash-card-header"><h3 class="dash-card-title">Estimator Pricing Configuration</h3></div>
+      <div class="dash-card-body">
+        <form onsubmit="saveConfig(event)">
+          <div class="config-grid">
+            <div>
+              <div class="form-label mb-4" style="font-size:0.78rem;letter-spacing:0.15em">BHK BASE PRICES</div>
+              <div class="form-group"><label class="form-label">1 BHK Base (₹)</label><input class="form-input" id="cfg_1bhk" value="350000" type="number" /></div>
+              <div class="form-group"><label class="form-label">2 BHK Base (₹)</label><input class="form-input" id="cfg_2bhk" value="650000" type="number" /></div>
+              <div class="form-group"><label class="form-label">3 BHK Base (₹)</label><input class="form-input" id="cfg_3bhk" value="950000" type="number" /></div>
+              <div class="form-group"><label class="form-label">4 BHK Base (₹)</label><input class="form-input" id="cfg_4bhk" value="1400000" type="number" /></div>
+              <div class="form-group"><label class="form-label">5+ BHK Base (₹)</label><input class="form-input" id="cfg_5bhk" value="2000000" type="number" /></div>
+            </div>
+            <div>
+              <div class="form-label mb-4" style="font-size:0.78rem;letter-spacing:0.15em">ROOM ADD-ON PRICES</div>
+              <div class="form-group"><label class="form-label">Kitchen (₹)</label><input class="form-input" id="cfg_kitchen" value="120000" type="number" /></div>
+              <div class="form-group"><label class="form-label">Living Room (₹)</label><input class="form-input" id="cfg_living" value="150000" type="number" /></div>
+              <div class="form-group"><label class="form-label">Bedroom (₹)</label><input class="form-input" id="cfg_bed" value="100000" type="number" /></div>
+              <div class="form-group"><label class="form-label">Wardrobe (₹)</label><input class="form-input" id="cfg_ward" value="65000" type="number" /></div>
+              <div class="form-group"><label class="form-label">False Ceiling (₹)</label><input class="form-input" id="cfg_ceil" value="55000" type="number" /></div>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-gold mt-4">Save Configuration</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script src="js/main.js"></script>
+<script src="js/admin.js"></script>
+</body>
+</html>

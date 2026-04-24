@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Interior Cost Estimator – AARAV Interiors</title>
+  <meta name="description" content="Get an instant interior design cost estimate for your home in Hyderabad. 5-step premium calculator by AARAV Interiors." />
+  <link rel="stylesheet" href="css/design-system.css" />
+  <link rel="stylesheet" href="css/nav-footer.css" />
+  <link rel="stylesheet" href="css/estimator.css" />
+  <link rel="icon" type="image/jpeg" href="../assets/images/logo.jpeg" />
+</head>
+<body>
+<nav class="nav scrolled" id="nav">
+  <div class="container nav-inner">
+    <a href="index.html" class="nav-logo">
+      <img src="../assets/images/logo.jpeg" alt="AARAV Interiors" />
+      <span class="nav-logo-text">AARAV <span>INTERIORS</span></span>
+    </a>
+    <ul class="nav-links">
+      <li><a href="index.html" class="nav-link">Home</a></li>
+      <li><a href="portfolio.html" class="nav-link">Portfolio</a></li>
+      <li><a href="services.html" class="nav-link">Services</a></li>
+      <li><a href="estimator.html" class="nav-link active">Estimator</a></li>
+      <li><a href="contact.html" class="nav-link">Contact</a></li>
+      <li><a href="login.html" class="btn btn-outline nav-cta">Client Login</a></li>
+    </ul>
+    <button class="nav-hamburger" id="hamburger"><span></span><span></span><span></span></button>
+  </div>
+</nav>
+<div class="nav-mobile" id="navMobile">
+  <span class="nav-mobile-close" id="navClose">✕</span>
+  <a href="index.html" class="nav-link" onclick="closeMobileNav()">Home</a>
+  <a href="estimator.html" class="nav-link" onclick="closeMobileNav()">Estimator</a>
+  <a href="contact.html" class="nav-link" onclick="closeMobileNav()">Contact</a>
+</div>
+
+<div class="estimator-page">
+  <!-- Header -->
+  <div class="estimator-header">
+    <div class="container">
+      <span class="label-text">Free Tool</span>
+      <h1 class="display-md mt-2">Interior Cost Estimator</h1>
+      <p class="body-md mt-2">Get an instant, transparent price estimate for your home interior in just 5 steps.</p>
+    </div>
+  </div>
+
+  <!-- Progress Bar -->
+  <div class="estimator-progress-wrap">
+    <div class="container">
+      <div class="progress-steps">
+        <div class="progress-step active" data-step="1"><span class="ps-num">1</span><span class="ps-label">BHK Type</span></div>
+        <div class="progress-line"></div>
+        <div class="progress-step" data-step="2"><span class="ps-num">2</span><span class="ps-label">Rooms</span></div>
+        <div class="progress-line"></div>
+        <div class="progress-step" data-step="3"><span class="ps-num">3</span><span class="ps-label">Package</span></div>
+        <div class="progress-line"></div>
+        <div class="progress-step" data-step="4"><span class="ps-num">4</span><span class="ps-label">Add-ons</span></div>
+        <div class="progress-line"></div>
+        <div class="progress-step" data-step="5"><span class="ps-num">5</span><span class="ps-label">Estimate</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Steps Container -->
+  <div class="estimator-body">
+    <div class="container">
+
+      <!-- STEP 1: BHK -->
+      <div class="est-step active" id="step1">
+        <div class="step-title">
+          <span class="label-text">Step 1 of 5</span>
+          <h2 class="display-md mt-2">What is Your BHK Type?</h2>
+          <p class="body-md mt-2">Select your apartment or home configuration.</p>
+        </div>
+        <div class="bhk-grid">
+          <button class="bhk-card" data-bhk="1BHK" data-price="350000">
+            <span class="bhk-num">1</span>
+            <span class="bhk-label">BHK</span>
+            <span class="bhk-price">From ₹ 3.5L</span>
+          </button>
+          <button class="bhk-card" data-bhk="2BHK" data-price="650000">
+            <span class="bhk-num">2</span>
+            <span class="bhk-label">BHK</span>
+            <span class="bhk-price">From ₹ 6.5L</span>
+          </button>
+          <button class="bhk-card" data-bhk="3BHK" data-price="950000">
+            <span class="bhk-num">3</span>
+            <span class="bhk-label">BHK</span>
+            <span class="bhk-price">From ₹ 9.5L</span>
+          </button>
+          <button class="bhk-card" data-bhk="4BHK" data-price="1400000">
+            <span class="bhk-num">4</span>
+            <span class="bhk-label">BHK</span>
+            <span class="bhk-price">From ₹ 14L</span>
+          </button>
+          <button class="bhk-card" data-bhk="5+BHK" data-price="2000000">
+            <span class="bhk-num">5+</span>
+            <span class="bhk-label">BHK</span>
+            <span class="bhk-price">From ₹ 20L</span>
+          </button>
+        </div>
+        <div class="step-nav">
+          <div></div>
+          <button class="btn btn-gold" id="step1Next" disabled>Next Step →</button>
+        </div>
+      </div>
+
+      <!-- STEP 2: Rooms -->
+      <div class="est-step" id="step2">
+        <div class="step-title">
+          <span class="label-text">Step 2 of 5</span>
+          <h2 class="display-md mt-2">Select Rooms to Design</h2>
+          <p class="body-md mt-2">Choose all the areas you want us to work on.</p>
+        </div>
+        <div class="rooms-grid">
+          <label class="room-card">
+            <input type="checkbox" name="room" value="kitchen" data-price="120000" />
+            <div class="room-card-inner">
+              <div class="room-icon">🍳</div>
+              <div class="room-name">Kitchen</div>
+              <div class="room-cost">+ ₹ 1.2L</div>
+            </div>
+          </label>
+          <label class="room-card">
+            <input type="checkbox" name="room" value="living" data-price="150000" />
+            <div class="room-card-inner">
+              <div class="room-icon">🛋</div>
+              <div class="room-name">Living Room</div>
+              <div class="room-cost">+ ₹ 1.5L</div>
+            </div>
+          </label>
+          <label class="room-card">
+            <input type="checkbox" name="room" value="master-bed" data-price="100000" />
+            <div class="room-card-inner">
+              <div class="room-icon">🛏</div>
+              <div class="room-name">Master Bedroom</div>
+              <div class="room-cost">+ ₹ 1L</div>
+            </div>
+          </label>
+          <label class="room-card">
+            <input type="checkbox" name="room" value="wardrobe" data-price="65000" />
+            <div class="room-card-inner">
+              <div class="room-icon">🚪</div>
+              <div class="room-name">Wardrobe</div>
+              <div class="room-cost">+ ₹ 65K</div>
+            </div>
+          </label>
+          <label class="room-card">
+            <input type="checkbox" name="room" value="false-ceiling" data-price="55000" />
+            <div class="room-card-inner">
+              <div class="room-icon">💡</div>
+              <div class="room-name">False Ceiling</div>
+              <div class="room-cost">+ ₹ 55K</div>
+            </div>
+          </label>
+          <label class="room-card">
+            <input type="checkbox" name="room" value="kids-bed" data-price="80000" />
+            <div class="room-card-inner">
+              <div class="room-icon">🎨</div>
+              <div class="room-name">Kids Bedroom</div>
+              <div class="room-cost">+ ₹ 80K</div>
+            </div>
+          </label>
+        </div>
+        <!-- Bedroom Qty -->
+        <div class="bedroom-qty-wrap">
+          <label class="qty-label">Number of Additional Bedrooms:</label>
+          <div class="qty-control">
+            <button class="qty-btn" id="bdQtyMinus">−</button>
+            <span class="qty-val" id="bdQtyVal">0</span>
+            <button class="qty-btn" id="bdQtyPlus">+</button>
+          </div>
+          <span class="qty-note">Each additional bedroom + ₹ 80,000</span>
+        </div>
+        <div class="step-nav">
+          <button class="btn btn-ghost" onclick="goStep(1)">← Back</button>
+          <button class="btn btn-gold" onclick="goStep(3)">Next Step →</button>
+        </div>
+      </div>
+
+      <!-- STEP 3: Package -->
+      <div class="est-step" id="step3">
+        <div class="step-title">
+          <span class="label-text">Step 3 of 5</span>
+          <h2 class="display-md mt-2">Choose Your Design Package</h2>
+          <p class="body-md mt-2">The package multiplies all costs — choose the finish that suits your lifestyle.</p>
+        </div>
+        <div class="packages-est-grid">
+          <button class="pkg-card" data-pkg="Basic" data-multiplier="1">
+            <div class="pkg-header">
+              <div class="pkg-name">Basic</div>
+              <div class="pkg-tag">1× multiplier</div>
+            </div>
+            <div class="gold-divider mt-2 mb-3"></div>
+            <ul class="pkg-list">
+              <li>✦ Standard laminates</li>
+              <li>✦ Regular hardware</li>
+              <li>✦ 2D floor plan</li>
+              <li>✦ 1-year warranty</li>
+            </ul>
+          </button>
+          <button class="pkg-card pkg-card--featured" data-pkg="Standard" data-multiplier="1.5">
+            <div class="pkg-ribbon">Recommended</div>
+            <div class="pkg-header">
+              <div class="pkg-name">Standard</div>
+              <div class="pkg-tag">1.5× multiplier</div>
+            </div>
+            <div class="gold-divider mt-2 mb-3"></div>
+            <ul class="pkg-list">
+              <li>✦ Acrylic / MDF finish</li>
+              <li>✦ Hettich hardware</li>
+              <li>✦ 2D + 3D renders</li>
+              <li>✦ 3-year warranty</li>
+            </ul>
+          </button>
+          <button class="pkg-card" data-pkg="Premium" data-multiplier="2">
+            <div class="pkg-header">
+              <div class="pkg-name">Premium</div>
+              <div class="pkg-tag">2× multiplier</div>
+            </div>
+            <div class="gold-divider mt-2 mb-3"></div>
+            <ul class="pkg-list">
+              <li>✦ Italian lacquer/veneer</li>
+              <li>✦ Hafele / Blum hardware</li>
+              <li>✦ VR walkthrough</li>
+              <li>✦ 5-year warranty</li>
+            </ul>
+          </button>
+        </div>
+        <div class="step-nav">
+          <button class="btn btn-ghost" onclick="goStep(2)">← Back</button>
+          <button class="btn btn-gold" id="step3Next" disabled>Next Step →</button>
+        </div>
+      </div>
+
+      <!-- STEP 4: Add-ons -->
+      <div class="est-step" id="step4">
+        <div class="step-title">
+          <span class="label-text">Step 4 of 5</span>
+          <h2 class="display-md mt-2">Optional Add-ons</h2>
+          <p class="body-md mt-2">Enhance your project with these premium extras.</p>
+        </div>
+        <div class="addons-grid">
+          <label class="addon-card">
+            <input type="checkbox" name="addon" value="modular-kitchen" data-price="85000" />
+            <div class="addon-inner">
+              <div class="addon-icon">🍳</div>
+              <div class="addon-info">
+                <div class="addon-name">Modular Kitchen Upgrade</div>
+                <div class="addon-desc">Pull-out shelves, magic corners, premium handles</div>
+              </div>
+              <div class="addon-price">+ ₹ 85K</div>
+            </div>
+          </label>
+          <label class="addon-card">
+            <input type="checkbox" name="addon" value="wardrobes-upgrade" data-price="70000" />
+            <div class="addon-inner">
+              <div class="addon-icon">👔</div>
+              <div class="addon-info">
+                <div class="addon-name">Wardrobe Interior Upgrade</div>
+                <div class="addon-desc">Pull-out drawers, LED lights, shoe racks</div>
+              </div>
+              <div class="addon-price">+ ₹ 70K</div>
+            </div>
+          </label>
+          <label class="addon-card">
+            <input type="checkbox" name="addon" value="smart-lighting" data-price="65000" />
+            <div class="addon-inner">
+              <div class="addon-icon">💡</div>
+              <div class="addon-info">
+                <div class="addon-name">Smart Lighting System</div>
+                <div class="addon-desc">Dimmers, CCT control, voice/app enabled</div>
+              </div>
+              <div class="addon-price">+ ₹ 65K</div>
+            </div>
+          </label>
+          <label class="addon-card">
+            <input type="checkbox" name="addon" value="custom-furniture" data-price="120000" />
+            <div class="addon-inner">
+              <div class="addon-icon">🛋</div>
+              <div class="addon-info">
+                <div class="addon-name">Custom Furniture Set</div>
+                <div class="addon-desc">Bespoke sofa, dining table, bed frame</div>
+              </div>
+              <div class="addon-price">+ ₹ 1.2L</div>
+            </div>
+          </label>
+        </div>
+        <div class="step-nav">
+          <button class="btn btn-ghost" onclick="goStep(3)">← Back</button>
+          <button class="btn btn-gold" onclick="calculateAndShow()">See My Estimate →</button>
+        </div>
+      </div>
+
+      <!-- STEP 5: Result -->
+      <div class="est-step" id="step5">
+        <div class="result-wrap">
+          <div class="result-header">
+            <span class="label-text">Your Estimate</span>
+            <div class="gold-divider centered mt-2"></div>
+            <h2 class="display-md mt-2" id="resultRange">₹ 0 – ₹ 0</h2>
+            <p class="body-md mt-2">Estimated range for your <span id="resultBhk"></span> — <span id="resultPkg"></span> package</p>
+          </div>
+          <div class="result-breakdown" id="resultBreakdown"></div>
+          <div class="result-disclaimer">
+            <p>* This is an indicative estimate. Final pricing depends on exact measurements, material choices and site conditions. Our team will provide a detailed quote after a free consultation.</p>
+          </div>
+          <div class="result-actions">
+            <a href="contact.html" class="btn btn-gold">
+              Get Detailed Quote
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </a>
+            <a href="https://wa.me/919876543210?text=Hi%2C%20I%20just%20used%20your%20estimator%20and%20would%20like%20a%20detailed%20quote." target="_blank" class="btn btn-ghost">
+              WhatsApp Us
+            </a>
+            <button class="btn btn-ghost" onclick="goStep(1)">Start Over</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<a href="https://wa.me/919876543210" target="_blank" class="whatsapp-float">
+  <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+</a>
+
+<script src="js/main.js"></script>
+<script src="js/estimator.js"></script>
+</body>
+</html>

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Client Login – AARAV Interiors</title>
+  <meta name="description" content="Login to your AARAV Interiors client portal to track your project, view designs, and communicate with your designer." />
+  <link rel="stylesheet" href="css/design-system.css" />
+  <link rel="stylesheet" href="css/login.css" />
+  <link rel="icon" type="image/jpeg" href="../assets/images/logo.jpeg" />
+</head>
+<body class="login-body">
+
+<div class="login-layout">
+  <!-- Left Panel -->
+  <div class="login-visual">
+    <img src="../assets/images/hero.png" alt="Luxury Interior" class="login-bg-img" />
+    <div class="login-visual-overlay"></div>
+    <div class="login-visual-content">
+      <a href="index.html" class="login-logo">
+        <img src="../assets/images/logo.jpeg" alt="AARAV Interiors" />
+        <span class="login-logo-text">AARAV <span>INTERIORS</span></span>
+      </a>
+      <div class="login-tagline">
+        <h2 class="display-md">Your Dream Space<br/>Awaits You</h2>
+        <p class="body-lg mt-3">Track your project progress, view exclusive designs, and stay connected with your designer — all in one place.</p>
+        <div class="gold-divider mt-4"></div>
+        <div class="login-features">
+          <div class="login-feature"><span>✦</span> Real-time project updates</div>
+          <div class="login-feature"><span>✦</span> View 2D/3D designs</div>
+          <div class="login-feature"><span>✦</span> Payment tracking</div>
+          <div class="login-feature"><span>✦</span> Document access</div>
+          <div class="login-feature"><span>✦</span> Direct chat with team</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Panel: Form -->
+  <div class="login-form-panel">
+    <div class="login-form-wrap">
+      <div class="login-form-header">
+        <span class="label-text">Client Portal</span>
+        <h1 class="display-md mt-2">Welcome Back</h1>
+        <p class="body-md mt-2">Enter your credentials to access your project dashboard.</p>
+      </div>
+      <div class="gold-divider mt-3 mb-4"></div>
+
+      <div id="loginError" class="login-error hidden">
+        <span>⚠</span> <span id="loginErrorMsg">Invalid email or password.</span>
+      </div>
+
+      <form id="loginForm" novalidate>
+        <div class="form-group">
+          <label class="form-label" for="loginEmail">Email Address</label>
+          <input type="email" id="loginEmail" class="form-input" placeholder="you@example.com" required autocomplete="email" />
+        </div>
+        <div class="form-group" style="position:relative;">
+          <label class="form-label" for="loginPassword">Password</label>
+          <input type="password" id="loginPassword" class="form-input" placeholder="••••••••" required autocomplete="current-password" />
+          <button type="button" class="pw-toggle" id="pwToggle" onclick="togglePw()">Show</button>
+        </div>
+        <div class="login-forgotten">
+          <a href="#" class="text-gold" style="font-size:0.8rem;">Forgot Password?</a>
+        </div>
+        <button type="submit" class="btn btn-gold login-submit" id="loginSubmit">
+          Sign In
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>
+        </button>
+      </form>
+
+      <!-- Demo Hint -->
+      <div class="login-demo">
+        <div class="demo-divider"><span>Demo Credentials</span></div>
+        <div class="demo-creds">
+          <div class="demo-row">
+            <span class="demo-role">Client:</span>
+            <span class="demo-val">client@aarav.in / client123</span>
+            <button class="demo-fill" onclick="fillDemo('client@aarav.in','client123')">Fill</button>
+          </div>
+          <div class="demo-row">
+            <span class="demo-role">Admin:</span>
+            <span class="demo-val">admin@aarav.in / admin123</span>
+            <button class="demo-fill" onclick="fillDemo('admin@aarav.in','admin123')">Fill</button>
+          </div>
+        </div>
+      </div>
+
+      <p class="login-back"><a href="index.html" class="text-muted" style="font-size:0.82rem;">← Back to Website</a></p>
+    </div>
+  </div>
+</div>
+
+<script src="js/main.js"></script>
+<script src="js/auth.js"></script>
+</body>
+</html>

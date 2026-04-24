@@ -1,0 +1,38 @@
+/* ADMIN EXTRA CSS */
+.admin-header-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; }
+.admin-table td { vertical-align: middle; }
+.admin-action-btn { padding: 0.3rem 0.8rem; border: 1px solid var(--border-gold); border-radius: 100px; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.08em; color: var(--gold); background: transparent; cursor: pointer; transition: var(--transition-fast); }
+.admin-action-btn:hover { background: var(--gold); color: var(--dark-navy); }
+
+/* Modal */
+.admin-modal { position: fixed; inset: 0; z-index: 9000; display: flex; align-items: center; justify-content: center; }
+.admin-modal.hidden { display: none; }
+.modal-backdrop { position: absolute; inset: 0; background: rgba(7,30,42,0.85); backdrop-filter: blur(4px); }
+.modal-box { position: relative; z-index: 1; background: var(--navy); border: 1px solid var(--gold); border-radius: var(--radius-lg); padding: 2rem; width: 90%; max-width: 480px; }
+.modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; }
+.modal-header h3 { font-family: var(--font-display); font-size: 1.3rem; color: var(--white); }
+.modal-header button { color: var(--text-muted); font-size: 1.2rem; cursor: pointer; }
+.modal-form { display: flex; flex-direction: column; gap: 0; }
+
+/* Projects Grid */
+.projects-admin-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem; }
+.proj-admin-card { background: rgba(11,44,61,0.5); border: 1px solid var(--border-gold); border-radius: var(--radius-md); overflow: hidden; }
+.proj-admin-img { aspect-ratio: 16/9; overflow: hidden; }
+.proj-admin-img img { width: 100%; height: 100%; object-fit: cover; }
+.proj-admin-body { padding: 1.5rem; }
+.proj-admin-name { font-family: var(--font-display); font-size: 1.1rem; font-weight: 600; color: var(--white); }
+.proj-admin-client { font-size: 0.8rem; color: var(--gold); margin-top: 0.25rem; }
+.proj-admin-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; }
+
+/* Upload Zone */
+.upload-zone { border: 2px dashed rgba(198,169,105,0.3); border-radius: var(--radius-md); padding: 2.5rem; text-align: center; cursor: pointer; transition: var(--transition); }
+.upload-zone:hover { border-color: var(--gold); background: rgba(198,169,105,0.04); }
+.upload-icon { font-size: 2rem; margin-bottom: 0.75rem; }
+.upload-text { font-size: 0.9rem; color: var(--text-muted); }
+.upload-subtext { font-size: 0.75rem; color: rgba(138,155,170,0.5); margin-top: 0.25rem; }
+.uploaded-list { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.75rem; }
+.uploaded-file { display: flex; align-items: center; gap: 0.75rem; padding: 0.6rem 1rem; background: rgba(198,169,105,0.06); border: 1px solid var(--border-gold); border-radius: var(--radius-sm); font-size: 0.82rem; color: var(--text-muted); }
+
+/* Config Grid */
+.config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; }
+@media (max-width: 768px) { .config-grid { grid-template-columns: 1fr; } }

@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Client Dashboard – AARAV Interiors</title>
+  <link rel="stylesheet" href="css/design-system.css" />
+  <link rel="stylesheet" href="css/dashboard.css" />
+  <link rel="icon" type="image/jpeg" href="../assets/images/logo.jpeg" />
+</head>
+<body class="dashboard-body">
+
+<!-- Sidebar -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <a href="index.html" class="sidebar-logo">
+      <img src="../assets/images/logo.jpeg" alt="AARAV Interiors" />
+      <span>AARAV <span class="text-gold">INTERIORS</span></span>
+    </a>
+  </div>
+  <nav class="sidebar-nav">
+    <button class="sidebar-link active" onclick="showPanel('overview')" id="nav-overview">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      Overview
+    </button>
+    <button class="sidebar-link" onclick="showPanel('designs')" id="nav-designs">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+      Designs
+    </button>
+    <button class="sidebar-link" onclick="showPanel('timeline')" id="nav-timeline">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+      Timeline
+    </button>
+    <button class="sidebar-link" onclick="showPanel('payments')" id="nav-payments">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+      Payments
+    </button>
+    <button class="sidebar-link" onclick="showPanel('documents')" id="nav-documents">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      Documents
+    </button>
+    <button class="sidebar-link" onclick="showPanel('chat')" id="nav-chat">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+      Chat
+      <span class="sidebar-badge" id="chatBadge">2</span>
+    </button>
+  </nav>
+  <div class="sidebar-user">
+    <div class="user-avatar" id="userAvatar">R</div>
+    <div class="user-info">
+      <div class="user-name" id="userName">Rahul Mehta</div>
+      <div class="user-role">Client</div>
+    </div>
+    <button class="logout-btn" onclick="Auth.logout()" title="Logout">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+    </button>
+  </div>
+</aside>
+
+<!-- Mobile Sidebar Toggle -->
+<button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()">☰</button>
+
+<!-- Main Content -->
+<main class="dashboard-main" id="dashMain">
+
+  <!-- Top Bar -->
+  <header class="dash-topbar">
+    <div class="dash-topbar-left">
+      <h2 class="dash-page-title" id="dashPageTitle">Overview</h2>
+    </div>
+    <div class="dash-topbar-right">
+      <button class="notif-btn" title="Notifications">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg>
+        <span class="notif-dot"></span>
+      </button>
+      <div class="dash-avatar" id="dashAvatar">R</div>
+    </div>
+  </header>
+
+  <!-- ──── OVERVIEW PANEL ──── -->
+  <div class="panel active" id="panel-overview">
+    <div class="panel-grid-3">
+      <div class="stat-card">
+        <div class="stat-card-icon">
+          <!-- House/Project icon -->
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#C6A969" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+            <polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+        </div>
+        <div class="stat-card-val">72%</div>
+        <div class="stat-card-label">Project Complete</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-icon">
+          <!-- Rupee/payment coin icon -->
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#C6A969" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M8 8h5a2.5 2.5 0 010 5H8M8 13h8M10 13l3 5"/>
+          </svg>
+        </div>
+        <div class="stat-card-val">₹ 8.4L</div>
+        <div class="stat-card-label">Amount Paid</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-icon">
+          <!-- Calendar/deadline icon -->
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#C6A969" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2"/>
+            <line x1="16" y1="2" x2="16" y2="6"/>
+            <line x1="8" y1="2" x2="8" y2="6"/>
+            <line x1="3" y1="10" x2="21" y2="10"/>
+            <polyline points="9 16 11 18 15 14"/>
+          </svg>
+        </div>
+        <div class="stat-card-val">18 Days</div>
+        <div class="stat-card-label">Est. Completion</div>
+      </div>
+    </div>
+
+    <!-- Project Card -->
+    <div class="dash-card mt-4">
+      <div class="dash-card-header">
+        <h3 class="dash-card-title">3BHK Imperial Suite – Jubilee Hills</h3>
+        <span class="status-badge status-active">In Progress</span>
+      </div>
+      <div class="dash-card-body">
+        <div class="progress-track">
+          <div class="progress-labels">
+            <span class="label-text">Overall Progress</span>
+            <span class="text-gold" style="font-family:var(--font-display);font-size:1.1rem;font-weight:600;">72%</span>
+          </div>
+          <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:72%"></div></div>
+        </div>
+        <div class="project-phases mt-4">
+          <div class="phase done"><span class="phase-dot done-dot"></span><span>Design & Approval</span><span class="phase-date">Done</span></div>
+          <div class="phase done"><span class="phase-dot done-dot"></span><span>Material Procurement</span><span class="phase-date">Done</span></div>
+          <div class="phase active"><span class="phase-dot active-dot"></span><span>Civil & Carpenter Work</span><span class="phase-date">In Progress</span></div>
+          <div class="phase"><span class="phase-dot"></span><span>Painting & Finishes</span><span class="phase-date">Upcoming</span></div>
+          <div class="phase"><span class="phase-dot"></span><span>Final Handover</span><span class="phase-date">~May 15, 2026</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="dash-card mt-3">
+      <div class="dash-card-header"><h3 class="dash-card-title">Recent Updates</h3></div>
+      <div class="dash-card-body">
+        <div class="activity-list">
+          <div class="activity-item"><div class="activity-dot gold"></div><div><div class="activity-msg">Wardrobe carpenter work started in master bedroom</div><div class="activity-time">Today, 10:30 AM</div></div></div>
+          <div class="activity-item"><div class="activity-dot gold"></div><div><div class="activity-msg">Kitchen tiles installed — photos uploaded to gallery</div><div class="activity-time">Yesterday, 3:15 PM</div></div></div>
+          <div class="activity-item"><div class="activity-dot"></div><div><div class="activity-msg">Payment of ₹ 2L received for Phase 2</div><div class="activity-time">Apr 20, 2026</div></div></div>
+          <div class="activity-item"><div class="activity-dot"></div><div><div class="activity-msg">3D design approved by client</div><div class="activity-time">Apr 15, 2026</div></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ──── DESIGNS PANEL ──── -->
+  <div class="panel" id="panel-designs">
+    <div class="dash-card">
+      <div class="dash-card-header"><h3 class="dash-card-title">Your Design Files</h3><span class="status-badge status-active">2 Pending Review</span></div>
+      <div class="dash-card-body">
+        <div class="design-grid">
+          <div class="design-card">
+            <div class="design-thumb"><img src="../assets/images/living.png" alt="Living Room 3D" /><div class="design-type">3D Render</div></div>
+            <div class="design-info">
+              <div class="design-name">Living Room – Final 3D</div>
+              <div class="design-date">Apr 18, 2026</div>
+              <div class="design-actions">
+                <button class="btn btn-gold" style="padding:0.5rem 1rem;font-size:0.72rem" onclick="showToast('✓ Design Approved!','success')">Approve</button>
+                <button class="btn btn-ghost" style="padding:0.5rem 1rem;font-size:0.72rem" onclick="showToast('Change request sent ','gold')">Request Changes</button>
+              </div>
+            </div>
+          </div>
+          <div class="design-card">
+            <div class="design-thumb"><img src="../assets/images/kitchen.png" alt="Kitchen 3D" /><div class="design-type">3D Render</div></div>
+            <div class="design-info">
+              <div class="design-name">Modular Kitchen – Final 3D</div>
+              <div class="design-date">Apr 16, 2026</div>
+              <div class="design-actions">
+                <button class="btn btn-gold" style="padding:0.5rem 1rem;font-size:0.72rem" onclick="showToast('✓ Design Approved!','success')">Approve</button>
+                <button class="btn btn-ghost" style="padding:0.5rem 1rem;font-size:0.72rem" onclick="showToast('Change request sent','gold')">Request Changes</button>
+              </div>
+            </div>
+          </div>
+          <div class="design-card design-card--done">
+            <div class="design-thumb"><img src="../assets/images/bedroom.png" alt="Bedroom 3D" /><div class="design-type">2D Floor Plan</div></div>
+            <div class="design-info">
+              <div class="design-name">Master Bedroom – Floor Plan</div>
+              <div class="design-date">Apr 10, 2026</div>
+              <span class="status-badge status-done" style="margin-top:0.5rem;display:inline-block">✓ Approved</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ──── TIMELINE PANEL ──── -->
+  <div class="panel" id="panel-timeline">
+    <div class="dash-card">
+      <div class="dash-card-header"><h3 class="dash-card-title">Project Timeline</h3></div>
+      <div class="dash-card-body">
+        <div class="timeline-list">
+          <div class="tl-item done-tl">
+            <div class="tl-dot done-dot"></div>
+            <div class="tl-content">
+              <div class="tl-date">Mar 1 – Mar 15, 2026</div>
+              <div class="tl-title">Consultation & Design Phase</div>
+              <div class="tl-desc">Initial consultation, space measurements, mood board creation, 2D and 3D design drafts, client revisions and final design approval.</div>
+              <span class="status-badge status-done">Completed</span>
+            </div>
+          </div>
+          <div class="tl-item done-tl">
+            <div class="tl-dot done-dot"></div>
+            <div class="tl-content">
+              <div class="tl-date">Mar 16 – Apr 5, 2026</div>
+              <div class="tl-title">Material Procurement</div>
+              <div class="tl-desc">Tiles, laminates, hardware, fixtures and all approved materials sourced and delivered to site.</div>
+              <span class="status-badge status-done">Completed</span>
+            </div>
+          </div>
+          <div class="tl-item active-tl">
+            <div class="tl-dot active-dot"></div>
+            <div class="tl-content">
+              <div class="tl-date">Apr 6 – May 5, 2026</div>
+              <div class="tl-title">Civil, Carpentry & False Ceiling</div>
+              <div class="tl-desc">Civil modifications, modular kitchen installation, wardrobe carpentry, false ceiling and electrical work in progress.</div>
+              <span class="status-badge status-active">In Progress (72%)</span>
+            </div>
+          </div>
+          <div class="tl-item">
+            <div class="tl-dot"></div>
+            <div class="tl-content">
+              <div class="tl-date">May 6 – May 12, 2026</div>
+              <div class="tl-title">Painting & Finishing</div>
+              <div class="tl-desc">Wall painting, wallpaper application, light fixtures installation and final detailing.</div>
+              <span class="status-badge" style="border-color:rgba(255,255,255,0.15);color:var(--text-muted)">Upcoming</span>
+            </div>
+          </div>
+          <div class="tl-item">
+            <div class="tl-dot"></div>
+            <div class="tl-content">
+              <div class="tl-date">May 13 – May 15, 2026</div>
+              <div class="tl-title">Final Handover & Walkthrough</div>
+              <div class="tl-desc">Full site cleanup, final quality check, warranty documents handover, and client walkthrough.</div>
+              <span class="status-badge" style="border-color:rgba(255,255,255,0.15);color:var(--text-muted)">Upcoming</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ──── PAYMENTS PANEL ──── -->
+  <div class="panel" id="panel-payments">
+    <div class="panel-grid-3 mb-4">
+      <div class="stat-card"><div class="stat-card-val text-gold">₹ 14L</div><div class="stat-card-label">Total Project Cost</div></div>
+      <div class="stat-card"><div class="stat-card-val" style="color:#4CAF50">₹ 8.4L</div><div class="stat-card-label">Amount Paid</div></div>
+      <div class="stat-card"><div class="stat-card-val" style="color:#FF6B6B">₹ 5.6L</div><div class="stat-card-label">Balance Due</div></div>
+    </div>
+    <div class="dash-card">
+      <div class="dash-card-header"><h3 class="dash-card-title">Payment History</h3></div>
+      <div class="dash-card-body">
+        <table class="pay-table">
+          <thead><tr><th>Date</th><th>Description</th><th>Amount</th><th>Mode</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td>Mar 1, 2026</td><td>Booking Advance</td><td>₹ 1,40,000</td><td>Bank Transfer</td><td><span class="status-badge status-done">Paid</span></td></tr>
+            <tr><td>Mar 20, 2026</td><td>Phase 1 – Design</td><td>₹ 3,50,000</td><td>Cheque</td><td><span class="status-badge status-done">Paid</span></td></tr>
+            <tr><td>Apr 20, 2026</td><td>Phase 2 – Materials</td><td>₹ 3,50,000</td><td>UPI</td><td><span class="status-badge status-done">Paid</span></td></tr>
+            <tr><td>May 10, 2026</td><td>Phase 3 – Execution</td><td>₹ 3,50,000</td><td>—</td><td><span class="status-badge status-active">Pending</span></td></tr>
+            <tr><td>May 15, 2026</td><td>Final Balance</td><td>₹ 2,10,000</td><td>—</td><td><span class="status-badge status-active">Pending</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ──── DOCUMENTS PANEL ──── -->
+  <div class="panel" id="panel-documents">
+    <div class="dash-card">
+      <div class="dash-card-header"><h3 class="dash-card-title">Project Documents</h3></div>
+      <div class="dash-card-body">
+        <div class="doc-list">
+          <div class="doc-item">
+            <div class="doc-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C6A969" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            </div>
+            <div class="doc-info"><div class="doc-name">Design Agreement.pdf</div><div class="doc-date">Mar 1, 2026</div></div>
+            <button class="btn btn-outline" style="padding:0.4rem 1rem;font-size:0.7rem" onclick="showToast('Downloading...','gold')">Download</button>
+          </div>
+          <div class="doc-item">
+            <div class="doc-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C6A969" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13h2l1 2 2-4 1 2h2"/></svg>
+            </div>
+            <div class="doc-info"><div class="doc-name">2D Floor Plan – Full Home.pdf</div><div class="doc-date">Mar 15, 2026</div></div>
+            <button class="btn btn-outline" style="padding:0.4rem 1rem;font-size:0.7rem" onclick="showToast('Downloading...','gold')">Download</button>
+          </div>
+          <div class="doc-item">
+            <div class="doc-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C6A969" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="12" y2="16"/></svg>
+            </div>
+            <div class="doc-info"><div class="doc-name">Invoice #2026-001.pdf</div><div class="doc-date">Mar 20, 2026</div></div>
+            <button class="btn btn-outline" style="padding:0.4rem 1rem;font-size:0.7rem" onclick="showToast('Downloading...','gold')">Download</button>
+          </div>
+          <div class="doc-item">
+            <div class="doc-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C6A969" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="12" y2="16"/></svg>
+            </div>
+            <div class="doc-info"><div class="doc-name">Invoice #2026-002.pdf</div><div class="doc-date">Apr 20, 2026</div></div>
+            <button class="btn btn-outline" style="padding:0.4rem 1rem;font-size:0.7rem" onclick="showToast('Downloading...','gold')">Download</button>
+          </div>
+          <div class="doc-item">
+            <div class="doc-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C6A969" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>
+            </div>
+            <div class="doc-info"><div class="doc-name">Material Specification Sheet.pdf</div><div class="doc-date">Mar 18, 2026</div></div>
+            <button class="btn btn-outline" style="padding:0.4rem 1rem;font-size:0.7rem" onclick="showToast('Downloading...','gold')">Download</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ──── CHAT PANEL ──── -->
+  <div class="panel" id="panel-chat">
+    <div class="chat-wrap">
+      <div class="chat-messages" id="chatMessages">
+        <div class="chat-msg team"><div class="chat-bubble">Hello Rahul! Your false ceiling work for the living room started today. Everything is going as per plan. 🎉</div><div class="chat-time">Today, 10:30 AM · AARAV Team</div></div>
+        <div class="chat-msg team"><div class="chat-bubble">We've uploaded site photos for your review. Please check the Designs tab.</div><div class="chat-time">Today, 10:31 AM · AARAV Team</div></div>
+        <div class="chat-msg self"><div class="chat-bubble">Looks great! Can we upgrade the kitchen tiles to Italian marble?</div><div class="chat-time">Today, 11:00 AM · You</div></div>
+        <div class="chat-msg team"><div class="chat-bubble">Absolutely, we'll prepare a revised quote for the tile upgrade and share it by today evening.</div><div class="chat-time">Today, 11:08 AM · AARAV Team</div></div>
+      </div>
+      <div class="chat-input-wrap">
+        <input type="text" class="form-input chat-input" id="chatInput" placeholder="Type your message..." />
+        <button class="btn btn-gold chat-send" onclick="sendChat()">Send</button>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script src="js/main.js"></script>
+<script src="js/dashboard.js"></script>
+</body>
+</html>

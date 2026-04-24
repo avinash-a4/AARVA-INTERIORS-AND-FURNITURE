@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Portfolio – AARAV Interiors</title>
+  <meta name="description" content="Explore AARAV Interiors' portfolio of luxury interior projects across Hyderabad — kitchens, living rooms, bedrooms and more." />
+  <link rel="stylesheet" href="css/design-system.css" />
+  <link rel="stylesheet" href="css/nav-footer.css" />
+  <link rel="stylesheet" href="css/portfolio.css" />
+  <link rel="icon" type="image/jpeg" href="../assets/images/logo.jpeg" />
+</head>
+<body>
+
+<nav class="nav scrolled" id="nav">
+  <div class="container nav-inner">
+    <a href="index.html" class="nav-logo">
+      <img src="../assets/images/logo.jpeg" alt="AARAV Interiors" />
+      <span class="nav-logo-text">AARAV <span>INTERIORS</span></span>
+    </a>
+    <ul class="nav-links">
+      <li><a href="index.html" class="nav-link">Home</a></li>
+      <li><a href="portfolio.html" class="nav-link active">Portfolio</a></li>
+      <li><a href="services.html" class="nav-link">Services</a></li>
+      <li><a href="estimator.html" class="nav-link">Estimator</a></li>
+      <li><a href="contact.html" class="nav-link">Contact</a></li>
+      <li><a href="login.html" class="btn btn-outline nav-cta">Client Login</a></li>
+    </ul>
+    <button class="nav-hamburger" id="hamburger"><span></span><span></span><span></span></button>
+  </div>
+</nav>
+<div class="nav-mobile" id="navMobile">
+  <span class="nav-mobile-close" id="navClose">✕</span>
+  <a href="index.html" class="nav-link" onclick="closeMobileNav()">Home</a>
+  <a href="portfolio.html" class="nav-link" onclick="closeMobileNav()">Portfolio</a>
+  <a href="services.html" class="nav-link" onclick="closeMobileNav()">Services</a>
+  <a href="estimator.html" class="nav-link" onclick="closeMobileNav()">Estimator</a>
+  <a href="contact.html" class="nav-link" onclick="closeMobileNav()">Contact</a>
+  <a href="login.html" class="btn btn-gold" onclick="closeMobileNav()">Client Login</a>
+</div>
+
+<!-- PAGE HERO -->
+<section class="page-hero">
+  <div class="page-hero-bg">
+    <img src="../assets/images/living.png" alt="Portfolio" />
+    <div class="overlay-navy"></div>
+  </div>
+  <div class="container page-hero-content">
+    <span class="label-text reveal">Our Work</span>
+    <div class="gold-divider reveal reveal-delay-1"></div>
+    <h1 class="display-lg reveal reveal-delay-1">Project Portfolio</h1>
+    <p class="body-lg reveal reveal-delay-2">A curated collection of spaces we have transformed with craft, care and creativity.</p>
+  </div>
+</section>
+
+<!-- FILTER BAR -->
+<section class="portfolio-section">
+  <div class="container">
+    <div class="filter-bar reveal">
+      <button class="filter-btn active" data-filter="all">All Projects</button>
+      <button class="filter-btn" data-filter="kitchen">Kitchen</button>
+      <button class="filter-btn" data-filter="living">Living Room</button>
+      <button class="filter-btn" data-filter="bedroom">Bedroom</button>
+    </div>
+
+    <div class="portfolio-grid" id="portfolioGrid">
+      <!-- Kitchen Cards -->
+      <div class="port-card reveal" data-category="kitchen">
+        <div class="port-img-wrap">
+          <img src="../assets/images/kitchen.png" alt="Azure Kitchen" />
+          <div class="port-overlay">
+            <span class="label-text">Kitchen</span>
+            <h3 class="port-title">Azure Modular Kitchen</h3>
+            <p class="port-location">Banjara Hills · 2024</p>
+            <div class="port-tags"><span class="badge">Modular</span><span class="badge">Premium</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="port-card reveal reveal-delay-1" data-category="kitchen">
+        <div class="port-img-wrap">
+          <img src="../assets/images/kitchen.png" alt="Ivory Kitchen" style="filter:hue-rotate(30deg) brightness(0.9)"/>
+          <div class="port-overlay">
+            <span class="label-text">Kitchen</span>
+            <h3 class="port-title">Ivory Classic Kitchen</h3>
+            <p class="port-location">Jubilee Hills · 2025</p>
+            <div class="port-tags"><span class="badge">L-Shape</span><span class="badge">Standard</span></div>
+          </div>
+        </div>
+      </div>
+      <!-- Living Room Cards -->
+      <div class="port-card reveal reveal-delay-2" data-category="living">
+        <div class="port-img-wrap port-img-wrap--wide">
+          <img src="../assets/images/living.png" alt="Imperial Living" />
+          <div class="port-overlay">
+            <span class="label-text">Living Room</span>
+            <h3 class="port-title">Imperial Living Suite</h3>
+            <p class="port-location">Jubilee Hills · 2024</p>
+            <div class="port-tags"><span class="badge">Open Plan</span><span class="badge">Premium</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="port-card reveal" data-category="living">
+        <div class="port-img-wrap">
+          <img src="../assets/images/living.png" alt="Noir Living" style="filter:brightness(0.8) contrast(1.1)"/>
+          <div class="port-overlay">
+            <span class="label-text">Living Room</span>
+            <h3 class="port-title">Noir Living Lounge</h3>
+            <p class="port-location">Gachibowli · 2025</p>
+            <div class="port-tags"><span class="badge">Compact</span><span class="badge">Standard</span></div>
+          </div>
+        </div>
+      </div>
+      <!-- Bedroom Cards -->
+      <div class="port-card reveal reveal-delay-1" data-category="bedroom">
+        <div class="port-img-wrap">
+          <img src="../assets/images/bedroom.png" alt="Royal Master Suite" />
+          <div class="port-overlay">
+            <span class="label-text">Bedroom</span>
+            <h3 class="port-title">Royal Master Suite</h3>
+            <p class="port-location">Gachibowli · 2024</p>
+            <div class="port-tags"><span class="badge">Master</span><span class="badge">Premium</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="port-card reveal reveal-delay-2" data-category="bedroom">
+        <div class="port-img-wrap">
+          <img src="../assets/images/bedroom.png" alt="Velvet Bedroom" style="filter:hue-rotate(15deg)"/>
+          <div class="port-overlay">
+            <span class="label-text">Bedroom</span>
+            <h3 class="port-title">Velvet Kids Room</h3>
+            <p class="port-location">Hitech City · 2025</p>
+            <div class="port-tags"><span class="badge">Kids</span><span class="badge">Basic</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="port-card reveal" data-category="kitchen">
+        <div class="port-img-wrap">
+          <img src="../assets/images/kitchen.png" alt="Onyx Kitchen" style="filter:saturate(0.8)"/>
+          <div class="port-overlay">
+            <span class="label-text">Kitchen</span>
+            <h3 class="port-title">Onyx Counter Kitchen</h3>
+            <p class="port-location">Kondapur · 2024</p>
+            <div class="port-tags"><span class="badge">U-Shape</span><span class="badge">Premium</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="port-card reveal reveal-delay-1" data-category="bedroom">
+        <div class="port-img-wrap">
+          <img src="../assets/images/bedroom.png" alt="Guest Bedroom" style="filter:brightness(1.05) sepia(0.1)"/>
+          <div class="port-overlay">
+            <span class="label-text">Bedroom</span>
+            <h3 class="port-title">Pearl Guest Room</h3>
+            <p class="port-location">Madhapur · 2025</p>
+            <div class="port-tags"><span class="badge">Guest</span><span class="badge">Standard</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="port-card reveal reveal-delay-2" data-category="living">
+        <div class="port-img-wrap">
+          <img src="../assets/images/living.png" alt="Studio Living" style="filter:contrast(1.05) brightness(0.95)"/>
+          <div class="port-overlay">
+            <span class="label-text">Living Room</span>
+            <h3 class="port-title">Studio Grand Living</h3>
+            <p class="port-location">Secunderabad · 2025</p>
+            <div class="port-tags"><span class="badge">Studio</span><span class="badge">Basic</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section reveal">
+  <div class="container">
+    <div class="cta-inner">
+      <div class="cta-content">
+        <span class="label-text">Start Your Project</span>
+        <div class="gold-divider"></div>
+        <h2 class="display-md">Ready to Transform Your Space?</h2>
+      </div>
+      <div class="cta-actions">
+        <a href="estimator.html" class="btn btn-gold">Get Free Estimate</a>
+        <a href="contact.html" class="btn btn-ghost">Contact Us</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <div class="footer-brand-logo"><img src="../assets/images/logo.jpeg" alt="AARAV Interiors" /><span class="footer-brand-name">AARAV <span>INTERIORS</span></span></div>
+        <p class="footer-desc">Premium interior design studio crafting extraordinary living spaces across Hyderabad since 2015.</p>
+      </div>
+      <div><div class="footer-col-title">Navigation</div><ul class="footer-links"><li><a href="index.html" class="footer-link">→ Home</a></li><li><a href="portfolio.html" class="footer-link">→ Portfolio</a></li><li><a href="services.html" class="footer-link">→ Services</a></li><li><a href="estimator.html" class="footer-link">→ Estimator</a></li><li><a href="contact.html" class="footer-link">→ Contact</a></li></ul></div>
+      <div><div class="footer-col-title">Services</div><ul class="footer-links"><li><a href="services.html" class="footer-link">→ Residential</a></li><li><a href="services.html" class="footer-link">→ Modular Kitchens</a></li><li><a href="services.html" class="footer-link">→ Custom Furniture</a></li><li><a href="services.html" class="footer-link">→ False Ceilings</a></li></ul></div>
+      <div><div class="footer-col-title">Contact</div>
+        <div class="footer-contact-item">
+          <span class="footer-contact-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg></span>
+          <span>Banjara Hills, Hyderabad – 500034</span>
+        </div>
+        <div class="footer-contact-item">
+          <span class="footer-contact-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.8a19.79 19.79 0 01-3.07-8.63A2 2 0 012 1h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L6.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16z"/></svg></span>
+          <span>+91 98765 43210</span>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom"><span>© 2026 AARAV Interior Designers. All rights reserved.</span></div>
+  </div>
+</footer>
+
+<a href="https://wa.me/919876543210" target="_blank" class="whatsapp-float">
+  <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+</a>
+
+<script src="js/main.js"></script>
+<script src="js/portfolio.js"></script>
+</body>
+</html>
