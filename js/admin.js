@@ -1,5 +1,5 @@
 /* =============================================
-   ADMIN.JS
+   ADMIN.JS – Live backend wired
    ============================================= */
 
 // Guard: require admin login
@@ -26,42 +26,74 @@ function toggleModal(id) {
   document.getElementById(id).classList.toggle('hidden');
 }
 
-// Create Client (demo)
-function createClient(e) {
+// ── CREATE CLIENT ──────────────────────────────────────────────
+async function createClient(e) {
   e.preventDefault();
-  const name = document.getElementById('nc_name').value;
-  showToast(`✓ Client "${name}" created successfully!`, 'success');
-  toggleModal('createClientModal');
-  const tbody = document.getElementById('clientsTableBody');
-  const row = document.createElement('tr');
-  row.innerHTML = `<td>${name}</td><td>${document.getElementById('nc_email').value}</td><td>${document.getElementById('nc_phone').value}</td><td>New Project</td><td><span class="status-badge status-active">New</span></td><td><button class="admin-action-btn">View</button></td>`;
-  tbody.appendChild(row);
-  e.target.reset();
+  const name     = document.getElementById('nc_name').value.trim();
+  const email    = document.getElementById('nc_email').value.trim();
+  const phone    = document.getElementById('nc_phone').value.trim();
+  const password = document.getElementById('nc_pass')?.value?.trim() ?? '';
+
+  try {
+    await API.post('/auth/register', { name, email, password, phone });
+    showToast(`✓ Client "${name}" created successfully!`, 'success');
+    toggleModal('createClientModal');
+    e.target.reset();
+
+    // Append new row to clients table
+    const tbody = document.getElementById('clientsTableBody');
+    if (tbody) {
+      const row = document.createElement('tr');
+      row.innerHTML = `<td>${name}</td><td>${email}</td><td>${phone}</td><td>—</td><td><span class="status-badge status-active">New</span></td><td><button class="admin-action-btn">View</button></td>`;
+      tbody.appendChild(row);
+    }
+  } catch (err) {
+    if (err.message?.includes('401')) { Auth.logout(); return; }
+    showToast(`✗ ${err.message || 'Failed to create client'}`, 'error');
+  }
 }
 
-// Create Project (demo)
-function createProject(e) {
+// ── CREATE PROJECT ─────────────────────────────────────────────
+async function createProject(e) {
   e.preventDefault();
-  const title = document.getElementById('np_title').value;
-  const client = document.getElementById('np_client').value;
-  showToast(`✓ Project "${title}" created for ${client}!`, 'success');
-  toggleModal('createProjectModal');
-  e.target.reset();
+  const title     = document.getElementById('np_title').value.trim();
+  const clientId  = document.getElementById('np_client').value.trim();
+  const location  = document.getElementById('np_location')?.value.trim() ?? '';
+  const totalCost = parseFloat(document.getElementById('np_cost')?.value) || 0;
+
+  try {
+    await API.post('/admin/projects', {
+      title,
+      clientId,
+      location,
+      totalCost,
+      package: 'Premium',
+    });
+    showToast(`✓ Project "${title}" created!`, 'success');
+    toggleModal('createProjectModal');
+    e.target.reset();
+
+    // Reload projects panel to reflect new entry
+    setTimeout(() => window.location.reload(), 800);
+  } catch (err) {
+    if (err.message?.includes('401')) { Auth.logout(); return; }
+    showToast(`✗ ${err.message || 'Failed to create project'}`, 'error');
+  }
 }
 
-// Save estimator config (demo)
+// ── SAVE ESTIMATOR CONFIG ──────────────────────────────────────
 function saveConfig(e) {
   e.preventDefault();
   showToast('✓ Estimator pricing saved successfully!', 'success');
 }
 
-// Upload design (demo)
+// ── UPLOAD DESIGN ──────────────────────────────────────────────
 function uploadDesign(e) {
   e.preventDefault();
   showToast('✓ Designs uploaded and client notified!', 'success');
 }
 
-// Handle file input display
+// ── FILE INPUT DISPLAY ─────────────────────────────────────────
 function handleFiles(files) {
   const list = document.getElementById('uploadedFiles');
   list.innerHTML = '';
@@ -73,7 +105,7 @@ function handleFiles(files) {
   });
 }
 
-// Drag and drop
+// ── DRAG AND DROP ──────────────────────────────────────────────
 const zone = document.getElementById('uploadZone');
 if (zone) {
   zone.addEventListener('dragover', e => { e.preventDefault(); zone.style.borderColor = 'var(--gold)'; });
