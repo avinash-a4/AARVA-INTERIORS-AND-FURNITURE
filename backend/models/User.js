@@ -19,7 +19,13 @@ UserSchema.pre('save', async function(next) {
   next();
 });
 
+// 🔥 FIXED PASSWORD MATCH (handles both hashed + plain)
 UserSchema.methods.matchPassword = async function(entered) {
+  // If password is NOT hashed (manual insert case)
+  if (!this.password.startsWith('$2b$')) {
+    return entered === this.password;
+  }
+  // Normal bcrypt flow
   return bcrypt.compare(entered, this.password);
 };
 
