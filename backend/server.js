@@ -56,3 +56,7 @@ mongoose.connect(MONGO_URI)
   });
 
 module.exports = app;
+
+app.get('/', (req, res) => {
+  res.send('AARAV BACKEND RUNNING 🚀');
+});
