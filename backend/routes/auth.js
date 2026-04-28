@@ -41,8 +41,8 @@ router.post('/register', async (req, res) => {
   try {
     if (await User.findOne({ email })) return res.status(400).json({ message: 'Email already exists' });
 
-    // Use provided password if given (e.g. for admin), else auto-generate
-    const rawPassword = req.body.password || crypto.randomBytes(4).toString('hex');
+    // Accept password or temporaryPassword from frontend, else auto-generate
+    const rawPassword = req.body.password || req.body.temporaryPassword || crypto.randomBytes(4).toString('hex');
     console.log('Generated password:', rawPassword); // temp debug log
 
     // Let mongoose pre('save') handle bcrypt hashing — do NOT hash manually
