@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (!Auth.isLoggedIn()) { window.location.href = 'login.html'; return; }
   const user = Auth.getUser();
   if (user?.role !== 'admin') { window.location.href = 'dashboard.html'; return; }
+  loadClients();
 });
 
 // Panel switching
@@ -26,6 +27,27 @@ function toggleModal(id) {
   document.getElementById(id).classList.toggle('hidden');
 }
 
+// ── LOAD CLIENTS ───────────────────────────────────────────────
+async function loadClients() {
+  try {
+    const clients = await API.get('/admin/clients');
+    const tableBody = document.getElementById('clientsTableBody');
+    if (!tableBody) return;
+    tableBody.innerHTML = '';
+    clients.forEach(client => {
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${client.name}</td>
+        <td>${client.email}</td>
+        <td>${client.phone || '-'}</td>
+      `;
+      tableBody.appendChild(row);
+    });
+  } catch (error) {
+    console.error('Error loading clients:', error);
+  }
+}
+
 // ── CREATE CLIENT ──────────────────────────────────────────────
 async function createClient(e) {
   e.preventDefault();
@@ -39,14 +61,7 @@ async function createClient(e) {
     showToast(`✓ Client "${name}" created successfully!`, 'success');
     toggleModal('createClientModal');
     e.target.reset();
-
-    // Append new row to clients table
-    const tbody = document.getElementById('clientsTableBody');
-    if (tbody) {
-      const row = document.createElement('tr');
-      row.innerHTML = `<td>${name}</td><td>${email}</td><td>${phone}</td><td>—</td><td><span class="status-badge status-active">New</span></td><td><button class="admin-action-btn">View</button></td>`;
-      tbody.appendChild(row);
-    }
+    loadClients();
   } catch (err) {
     if (err.message?.includes('401')) { Auth.logout(); return; }
     showToast(`✗ ${err.message || 'Failed to create client'}`, 'error');
