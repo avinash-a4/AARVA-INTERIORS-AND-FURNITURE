@@ -35,10 +35,27 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// POST /api/auth/register  (Public — creates clients or admin accounts)
+// POST /api/auth/register
+// → Public for first-ever admin creation
+// → Requires admin token for all subsequent registrations
 router.post('/register', async (req, res) => {
-  const { name, email, phone } = req.body;
   try {
+    // ── BOOTSTRAP GUARD ─────────────────────────────────────────
+    // If any admin already exists, this route requires authentication
+    const adminExists = await User.findOne({ role: 'admin' });
+    if (adminExists) {
+      // Run protect middleware inline
+      await new Promise((resolve, reject) => {
+        protect(req, res, (err) => (err ? reject(err) : resolve()));
+      });
+      // Run adminOnly middleware inline
+      await new Promise((resolve, reject) => {
+        adminOnly(req, res, (err) => (err ? reject(err) : resolve()));
+      });
+    }
+
+    const { name, email, phone } = req.body;
+
     if (await User.findOne({ email })) return res.status(400).json({ message: 'Email already exists' });
 
     // Accept password or temporaryPassword from frontend, else auto-generate
