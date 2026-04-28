@@ -41,22 +41,24 @@ router.post('/register', protect, adminOnly, async (req, res) => {
   try {
     if (await User.findOne({ email })) return res.status(400).json({ message: 'Email already exists' });
 
-    // Auto-generate a secure 8-character password (ignore frontend-supplied password)
-    const plainPassword = crypto.randomBytes(4).toString('hex');
+    // Generate password ONCE — do NOT modify or re-use elsewhere
+    const rawPassword = crypto.randomBytes(4).toString('hex');
+    console.log('Generated password:', rawPassword); // temp debug log
 
-    const user = await User.create({ name, email, password: plainPassword, phone, role: 'client' });
+    // Let mongoose pre('save') handle bcrypt hashing — do NOT hash manually
+    const user = await User.create({ name, email, password: rawPassword, phone, role: 'client' });
 
-    // Send credentials to the client via email
+    // Send the EXACT same rawPassword — never touch it after this point
     try {
       await transporter.sendMail({
         from: process.env.EMAIL_USER,
-        to: user.email,
+        to: email,
         subject: 'Your Aarav Interiors Login Credentials',
         html: `
-          <h2>Welcome to Aarav Interiors</h2>
+          <h2>Welcome to AARAV Interiors</h2>
           <p>Your account has been created successfully.</p>
-          <p><b>Email:</b> ${user.email}</p>
-          <p><b>Password:</b> ${plainPassword}</p>
+          <p><strong>Email:</strong> ${email}</p>
+          <p><strong>Password:</strong> ${rawPassword}</p>
           <p>Please login and change your password after your first sign-in.</p>
         `,
       });

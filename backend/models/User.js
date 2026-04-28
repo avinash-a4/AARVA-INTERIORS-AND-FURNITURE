@@ -19,14 +19,8 @@ UserSchema.pre('save', async function(next) {
   next();
 });
 
-// 🔥 FIXED PASSWORD MATCH (handles both hashed + plain)
-UserSchema.methods.matchPassword = async function(entered) {
-  // If password is NOT hashed (manual insert case)
-  if (!this.password.startsWith('$2b$')) {
-    return entered === this.password;
-  }
-  // Normal bcrypt flow
-  return bcrypt.compare(entered, this.password);
+UserSchema.methods.matchPassword = async function(enteredPassword) {
+  return await bcrypt.compare(enteredPassword, this.password);
 };
 
 module.exports = mongoose.model('User', UserSchema);
