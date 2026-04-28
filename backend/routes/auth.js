@@ -46,7 +46,7 @@ router.post('/register', async (req, res) => {
     console.log('Generated password:', rawPassword); // temp debug log
 
     // Let mongoose pre('save') handle bcrypt hashing — do NOT hash manually
-    const user = await User.create({ name, email, password: rawPassword, phone, role: 'client' });
+    const user = await User.create({ name, email, password: rawPassword, phone, role: req.body.role || 'client' });
 
     // Send the EXACT same rawPassword — never touch it after this point
     try {
