@@ -35,8 +35,8 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// POST /api/auth/register  (Admin creates clients)
-router.post('/register', protect, adminOnly, async (req, res) => {
+// POST /api/auth/register  (Public — creates clients or admin accounts)
+router.post('/register', async (req, res) => {
   const { name, email, phone } = req.body;
   try {
     if (await User.findOne({ email })) return res.status(400).json({ message: 'Email already exists' });
