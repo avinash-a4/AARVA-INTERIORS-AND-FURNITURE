@@ -34,8 +34,27 @@ async function loadProjectData() {
       Auth.logout();
       return;
     }
-    // If no project assigned yet, leave hardcoded placeholder as-is
+    // 404 = no project assigned yet
+    if (err.message && (err.message.includes('404') || err.message.toLowerCase().includes('no project'))) {
+      showNoProjectMessage();
+      return;
+    }
     console.warn('Dashboard: could not load project —', err.message);
+  }
+}
+
+// ── NO PROJECT MESSAGE ─────────────────────────────────────────
+function showNoProjectMessage() {
+  const overviewPanel = document.getElementById('panel-overview');
+  if (!overviewPanel) return;
+  const placeholder = overviewPanel.querySelector('.dash-card');
+  if (placeholder) {
+    placeholder.innerHTML = `
+      <div class="dash-card-body" style="text-align:center;padding:3rem 1rem">
+        <div style="font-size:2.5rem;margin-bottom:1rem">🏗️</div>
+        <div class="dash-card-title" style="margin-bottom:0.5rem">No project assigned yet</div>
+        <p style="color:var(--text-muted);font-size:0.875rem">Your interior project will appear here once assigned by the AARAV team.</p>
+      </div>`;
   }
 }
 
@@ -51,7 +70,6 @@ function renderOverview(project) {
   if (progCard) progCard.textContent = progressVal + '%';
 
   // Amount paid card — derive from totalCost * (progress/100) as approximation
-  // (real amount comes from /client/payments; keep placeholder if no payment data)
   const costCard = document.querySelector('.stat-card:nth-child(2) .stat-card-val');
   if (costCard && totalCost) {
     const paid = Math.round((progressVal / 100) * totalCost);
@@ -61,8 +79,7 @@ function renderOverview(project) {
   // ── Project card header ──
   const titleEl = document.querySelector('#panel-overview .dash-card-title');
   if (titleEl) {
-    const clientName = project.clientId?.name ?? '';
-    const loc        = project.location ?? '';
+    const loc = project.location ?? '';
     titleEl.textContent = [project.title, loc].filter(Boolean).join(' – ');
   }
 
