@@ -42,14 +42,14 @@ async function loadClients() {
     if (!tableBody) return;
     tableBody.innerHTML = '';
     clients.forEach(client => {
+      const hasProject = !!client.projectId;
       const row = document.createElement('tr');
       row.innerHTML = `
         <td>${client.name}</td>
         <td>${client.email}</td>
         <td>${client.phone || '-'}</td>
-        <td>${client.project?.title || '—'}</td>
-        <td><span class="status-badge ${client.project ? 'status-active' : ''}">${client.project ? 'Active' : 'No Project'}</span></td>
-        <td><button class="admin-action-btn" onclick="showToast('Opening client dashboard...','gold')">View</button></td>
+        <td>${client.projectId?.title || '—'}</td>
+        <td><span class="status-badge ${hasProject ? 'status-active' : ''}">${hasProject ? 'Active' : 'No Project'}</span></td>
       `;
       tableBody.appendChild(row);
     });
