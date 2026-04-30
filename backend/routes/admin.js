@@ -67,14 +67,16 @@ router.post('/projects/:id/designs/upload', upload.single('file'), async (req, r
 
     if (!req.file) return res.status(400).json({ message: 'No file provided' });
 
-    // Stream buffer to Cloudinary — no local file written
-    // resource_type 'auto' lets Cloudinary detect the file type correctly,
-    // ensuring PDFs open as proper PDF in browser (not raw text)
+    // Explicitly set resource_type per file:
+    // PDFs → 'raw'   so Cloudinary stores under /raw/upload/ with correct Content-Type
+    // Images → 'image' for normal image processing and delivery
+    const isPDF = req.file.mimetype === 'application/pdf';
+
     const cloudinaryUrl = await new Promise((resolve, reject) => {
       const stream = cloudinary.uploader.upload_stream(
         {
           folder:        'aarav-interiors/designs',
-          resource_type: 'auto',
+          resource_type: isPDF ? 'raw' : 'image',
           public_id:     `project_${req.params.id}_${Date.now()}`,
         },
         (error, result) => {
