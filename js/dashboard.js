@@ -216,30 +216,18 @@ function renderDesigns(designs) {
 
 // ── OPEN DESIGN IN NEW TAB ──────────────────────────────
 function openDesign(url) {
-  const isPDF = url.toLowerCase().endsWith('.pdf');
-
-  if (!isPDF) {
-    // Images and other non-PDF files open directly
-    window.open(url, '_blank');
-    return;
-  }
-
-
-  // PDFs: try the original Cloudinary URL first (no URL rewriting — avoids 404s)
-  const newTab = window.open(url, '_blank');
-
-  // After 1s, check whether the tab actually loaded the PDF.
-  // If the tab is gone or blank, fall back to Google Docs Viewer.
-  setTimeout(() => {
-    try {
-      if (!newTab || newTab.closed || newTab.location.href === 'about:blank') {
-        window.open(`https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`, '_blank');
-      }
-    } catch (e) {
-      // newTab.location throws SecurityError when the tab navigated to a
-      // cross-origin URL — meaning the PDF URL loaded successfully.
+  if (url.includes('drive.google.com')) {
+    // Extract the file ID from any Drive URL format:
+    // /file/d/<id>/view, /open?id=<id>, /uc?id=<id>, etc.
+    const match = url.match(/[-\w]{25,}/);
+    if (match) {
+      const previewUrl = `https://drive.google.com/file/d/${match[0]}/preview`;
+      window.open(previewUrl, '_blank');
+      return;
     }
-  }, 1000);
+  }
+  // Non-Drive URLs (images, etc.) open directly
+  window.open(url, '_blank');
 }
 
 // ── APPROVE / REJECT DESIGN ──────────────────────────────

@@ -355,80 +355,34 @@ async function loadDesignProjects() {
   }
 }
 
-// ── UPLOAD DESIGN ──────────────────────────────────────────────
+// ── UPLOAD DESIGN (Google Drive link) ────────────────────────────
 async function uploadDesign(e) {
   e.preventDefault();
 
   const projectId = document.getElementById('design_client')?.value?.trim();
   const type      = document.getElementById('design_type')?.value?.trim();
-  const fileInput = document.getElementById('fileInput');
-  const file      = fileInput?.files?.[0];
+  const name      = document.getElementById('design_name')?.value?.trim();
+  const url       = document.getElementById('design_url')?.value?.trim();
 
   // Validation
   if (!projectId) { showToast('✗ Please select a project', 'error'); return; }
   if (!type)      { showToast('✗ Please select a design type', 'error'); return; }
-  if (!file)      { showToast('✗ Please select a file to upload', 'error'); return; }
+  if (!name)      { showToast('✗ Please enter a design name', 'error'); return; }
+  if (!url)       { showToast('✗ Please paste a Google Drive link', 'error'); return; }
 
   const submitBtn = e.target.querySelector('button[type="submit"]');
-  if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Uploading…'; }
+  if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Saving…'; }
 
   try {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('name', file.name);
-    formData.append('type', type);
-
-    const res = await fetch(`${API.BASE}/admin/projects/${projectId}/designs/upload`, {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + Auth.getToken() },
-      body: formData,
-    });
-
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || 'Upload failed');
-
-    showToast('✓ Design uploaded successfully!', 'success');
+    await API.post(`/admin/projects/${projectId}/designs`, { name, type, url });
+    showToast('✓ Design link saved successfully!', 'success');
     e.target.reset();
-    document.getElementById('uploadedFiles').innerHTML = '';
-
-    // Show quick preview of uploaded URL
-    const design = data.design;
-    if (design?.url) {
-      const preview = document.getElementById('uploadedFiles');
-      const isImage = design.url.includes('/image/');
-      preview.innerHTML = `
-        <div class="uploaded-file" style="flex-direction:column;gap:0.5rem;padding:1rem">
-          ${isImage
-            ? `<img src="${design.url}" alt="${design.name}" style="max-height:140px;border-radius:6px;object-fit:cover" />`
-            : `<a href="${design.url}" target="_blank" class="btn btn-outline" style="padding:0.4rem 1rem;font-size:0.7rem">View Uploaded File</a>`
-          }
-          <span style="color:var(--gold);font-size:0.78rem">✓ ${design.name} uploaded</span>
-        </div>`;
-    }
   } catch (err) {
     if (err.message?.includes('401')) { Auth.logout(); return; }
-    showToast(`✗ ${err.message || 'Upload failed'}`, 'error');
+    showToast(`✗ ${err.message || 'Failed to save design link'}`, 'error');
   } finally {
-    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Upload & Notify Client'; }
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Save Design Link'; }
   }
 }
 
-// ── FILE INPUT DISPLAY ─────────────────────────────────────────
-function handleFiles(files) {
-  const list = document.getElementById('uploadedFiles');
-  list.innerHTML = '';
-  Array.from(files).forEach(f => {
-    const item = document.createElement('div');
-    item.className = 'uploaded-file';
-    item.innerHTML = `<span>📎</span><span>${f.name}</span><span style="margin-left:auto;color:var(--gold)">${(f.size/1024).toFixed(0)} KB</span>`;
-    list.appendChild(item);
-  });
-}
 
-// ── DRAG AND DROP ──────────────────────────────────────────────
-const zone = document.getElementById('uploadZone');
-if (zone) {
-  zone.addEventListener('dragover', e => { e.preventDefault(); zone.style.borderColor = 'var(--gold)'; });
-  zone.addEventListener('dragleave', () => { zone.style.borderColor = ''; });
-  zone.addEventListener('drop', e => { e.preventDefault(); zone.style.borderColor = ''; handleFiles(e.dataTransfer.files); });
-}

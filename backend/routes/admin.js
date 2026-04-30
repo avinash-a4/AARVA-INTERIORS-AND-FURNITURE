@@ -1,5 +1,6 @@
 const express    = require('express');
 const router     = express.Router();
+const nodemailer = require('nodemailer');
 const User       = require('../models/User');
 const Project    = require('../models/Project');
 const Payment    = require('../models/Payment');
@@ -50,13 +51,61 @@ router.post('/projects/:id/timeline', async (req, res) => {
   res.json(project.timeline);
 });
 
-// POST /api/admin/projects/:id/designs  (save URL — existing, unchanged)
+// POST /api/admin/projects/:id/designs  (save Google Drive URL + notify client)
 router.post('/projects/:id/designs', async (req, res) => {
-  const project = await Project.findById(req.params.id);
-  if (!project) return res.status(404).json({ message: 'Project not found' });
-  project.designs.push(req.body);
-  await project.save();
-  res.json(project.designs);
+  try {
+    const project = await Project.findById(req.params.id).populate('clientId', 'name email');
+    if (!project) return res.status(404).json({ message: 'Project not found' });
+
+    const { name, type, url } = req.body;
+    if (!url) return res.status(400).json({ message: 'Design URL is required' });
+
+    project.designs.push({ name, type, url, approved: false, uploadedAt: new Date() });
+    await project.save();
+
+    // ── Send email notification (silent — never crashes the API) ──
+    try {
+      const client = project.clientId;  // already populated above
+      if (client?.email) {
+        const transporter = nodemailer.createTransport({
+          service: 'gmail',
+          auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
+        });
+
+        await transporter.sendMail({
+          from:    `"AARAV Interiors" <${process.env.EMAIL_USER}>`,
+          to:      client.email,
+          subject: `New Design Added — ${project.title}`,
+          html: `
+            <div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#1a1a1a">
+              <h2 style="color:#C6A969">AARAV Interiors</h2>
+              <p>Hi <strong>${client.name}</strong>,</p>
+              <p>A new design has been added to your project <strong>${project.title}</strong>.</p>
+              <table style="border-collapse:collapse;margin:1rem 0">
+                <tr><td style="padding:6px 12px 6px 0;color:#666">Design</td><td><strong>${name || 'Untitled'}</strong></td></tr>
+                <tr><td style="padding:6px 12px 6px 0;color:#666">Type</td><td>${type || '—'}</td></tr>
+              </table>
+              <a href="${url}" target="_blank"
+                style="display:inline-block;padding:12px 24px;background:#C6A969;color:#fff;
+                       text-decoration:none;border-radius:6px;font-weight:bold;margin:0.5rem 0">
+                View Design
+              </a>
+              <p style="margin-top:1.5rem;color:#555">Please log in to your client dashboard to review and approve the design.</p>
+              <hr style="border:none;border-top:1px solid #eee;margin:1.5rem 0" />
+              <p style="color:#999;font-size:0.85rem">— AARAV Interiors &nbsp;&bull;&nbsp; Luxury Interior Designers</p>
+            </div>`,
+        });
+        console.log(`✓ Design notification sent to ${client.email}`);
+      }
+    } catch (mailErr) {
+      console.warn('Email notification failed (non-fatal):', mailErr.message);
+    }
+
+    res.status(201).json({ message: 'Design saved', designs: project.designs });
+  } catch (err) {
+    console.error('Save design error:', err);
+    res.status(500).json({ message: err.message || 'Failed to save design' });
+  }
 });
 
 // POST /api/admin/projects/:id/designs/upload  (real file upload via multer + Cloudinary)

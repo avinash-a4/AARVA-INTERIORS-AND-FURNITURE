@@ -167,26 +167,22 @@
   <!-- ── UPLOAD DESIGNS PANEL ── -->
   <div class="panel" id="panel-designs-upload">
     <div class="dash-card">
-      <div class="dash-card-header"><h3 class="dash-card-title">Upload Client Designs</h3></div>
+      <div class="dash-card-header"><h3 class="dash-card-title">Add Client Design Link</h3></div>
       <div class="dash-card-body">
         <form class="upload-form" onsubmit="uploadDesign(event)">
-          <div class="form-group"><label class="form-label">Select Client</label>
+          <div class="form-group"><label class="form-label">Select Project</label>
             <select class="form-input" id="design_client"><option value="">— Loading projects… —</option></select>
           </div>
           <div class="form-group"><label class="form-label">Design Type</label>
             <select class="form-input" id="design_type"><option value="2D Floor Plan">2D Floor Plan</option><option value="3D Render">3D Render</option><option value="Site Photo">Site Photo</option><option value="Material Board">Material Board</option></select>
           </div>
-          <div class="form-group"><label class="form-label">File</label>
-            <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
-              <div class="upload-icon">📁</div>
-              <div class="upload-text">Click to browse or drag & drop</div>
-              <div class="upload-subtext">PNG, JPG, PDF up to 20MB</div>
-              <input type="file" id="fileInput" multiple hidden accept="image/*,.pdf" onchange="handleFiles(this.files)" />
-            </div>
-            <div id="uploadedFiles" class="uploaded-list"></div>
+          <div class="form-group"><label class="form-label">Design Name</label>
+            <input class="form-input" id="design_name" placeholder="e.g. Living Room – Final 3D" required />
           </div>
-          <div class="form-group"><label class="form-label">Notes (optional)</label><textarea class="form-input" rows="3" placeholder="Any notes for the client..."></textarea></div>
-          <button type="submit" class="btn btn-gold">Upload & Notify Client</button>
+          <div class="form-group"><label class="form-label">Google Drive Link</label>
+            <input class="form-input" id="design_url" type="url" placeholder="https://drive.google.com/file/d/..." required />
+          </div>
+          <button type="submit" class="btn btn-gold">Save Design Link</button>
         </form>
       </div>
     </div>
