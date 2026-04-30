@@ -224,23 +224,20 @@ function openDesign(url) {
     return;
   }
 
-  // Step 1: Fix Cloudinary path — /image/upload/ can't serve PDFs correctly
-  const fixedUrl = url.replace('/image/upload/', '/raw/upload/');
 
-  // Step 2: Try opening the corrected URL directly in a new tab
-  const newTab = window.open(fixedUrl, '_blank');
+  // PDFs: try the original Cloudinary URL first (no URL rewriting — avoids 404s)
+  const newTab = window.open(url, '_blank');
 
-  // Step 3: After 1s check if the tab actually loaded; if not, fall back to Google Viewer
+  // After 1s, check whether the tab actually loaded the PDF.
+  // If the tab is gone or blank, fall back to Google Docs Viewer.
   setTimeout(() => {
     try {
       if (!newTab || newTab.closed || newTab.location.href === 'about:blank') {
-        const viewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(fixedUrl)}&embedded=true`;
-        window.open(viewerUrl, '_blank');
+        window.open(`https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`, '_blank');
       }
     } catch (e) {
-      // Cross-origin access to newTab.location throws — that means it loaded
-      // a real page (the PDF), so no fallback needed. If we still want to be safe:
-      // window.open(`https://docs.google.com/gview?url=${encodeURIComponent(fixedUrl)}&embedded=true`, '_blank');
+      // newTab.location throws SecurityError when the tab navigated to a
+      // cross-origin URL — meaning the PDF URL loaded successfully.
     }
   }, 1000);
 }
