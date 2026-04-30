@@ -194,8 +194,8 @@ function renderDesigns(designs) {
         ${dateStr ? `<div class="design-date">${dateStr}</div>` : ''}
         <div style="margin-top:0.6rem;display:flex;gap:0.5rem;flex-wrap:wrap">
           ${!isImage
-            ? `<a href="${design.url}" target="_blank" class="btn btn-outline" style="padding:0.4rem 0.85rem;font-size:0.7rem">View File</a>`
-            : `<a href="${design.url}" target="_blank" class="btn btn-outline" style="padding:0.4rem 0.85rem;font-size:0.7rem">Download</a>`
+            ? `<button class="btn btn-outline" style="padding:0.4rem 0.85rem;font-size:0.7rem" onclick="openDesign('${design.url}')">View File</button>`
+            : `<button class="btn btn-outline" style="padding:0.4rem 0.85rem;font-size:0.7rem" onclick="openDesign('${design.url}')">View File</button>`
           }
         </div>
         <div class="design-actions" style="margin-top:0.75rem">
@@ -212,6 +212,11 @@ function renderDesigns(designs) {
       </div>`;
     grid.appendChild(card);
   });
+}
+
+// ── OPEN DESIGN IN NEW TAB ──────────────────────────────
+function openDesign(url) {
+  window.open(url, '_blank');
 }
 
 // ── APPROVE / REJECT DESIGN ──────────────────────────────
