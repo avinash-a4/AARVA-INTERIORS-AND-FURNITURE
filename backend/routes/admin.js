@@ -78,6 +78,7 @@ router.post('/projects/:id/designs/upload', upload.single('file'), async (req, r
           folder:        'aarav-interiors/designs',
           resource_type: isPDF ? 'raw' : 'image',
           public_id:     `project_${req.params.id}_${Date.now()}`,
+          format:        isPDF ? 'pdf' : undefined,
         },
         (error, result) => {
           if (error) return reject(error);
