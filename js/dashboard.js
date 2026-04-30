@@ -110,6 +110,9 @@ function renderOverview(project) {
   if (Array.isArray(project.timeline) && project.timeline.length > 0) {
     renderTimeline(project.timeline);
   }
+
+  // ── Designs ──
+  renderDesigns(Array.isArray(project.designs) ? project.designs : []);
 }
 
 function renderTimeline(timeline) {
@@ -141,6 +144,114 @@ function renderTimeline(timeline) {
         </div>
       </div>`);
   });
+}
+
+// ── DESIGNS ──────────────────────────────────────────────
+function renderDesigns(designs) {
+  const grid = document.querySelector('#panel-designs .design-grid');
+  if (!grid) return;
+
+  // Update pending-review badge in the panel header
+  const pendingCount = designs.filter(d => !d.approved).length;
+  const headerBadge = document.querySelector('#panel-designs .status-badge');
+  if (headerBadge) {
+    headerBadge.textContent = pendingCount > 0 ? `${pendingCount} Pending Review` : 'All Reviewed';
+    headerBadge.className   = `status-badge ${pendingCount > 0 ? 'status-active' : 'status-done'}`;
+  }
+
+  if (!designs.length) {
+    grid.innerHTML = `
+      <div style="grid-column:1/-1;text-align:center;padding:3rem 1rem">
+        <div style="font-size:2.5rem;margin-bottom:1rem">🖨️</div>
+        <div class="design-name" style="color:var(--text-muted)">No designs uploaded yet</div>
+        <p style="color:var(--text-muted);font-size:0.85rem;margin-top:0.5rem">Your AARAV team will upload design files here for your review.</p>
+      </div>`;
+    return;
+  }
+
+  grid.innerHTML = '';
+  designs.forEach(design => {
+    const dateStr    = design.uploadedAt
+      ? new Date(design.uploadedAt).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' })
+      : '';
+    const isImage    = design.url && (design.url.includes('/image/') || /\.(jpg|jpeg|png|webp|gif)$/i.test(design.url));
+    const isApproved = design.approved;
+
+    const card = document.createElement('div');
+    card.className = `design-card${isApproved ? ' design-card--done' : ''}`;
+    card.dataset.designId = design._id;
+
+    card.innerHTML = `
+      <div class="design-thumb">
+        ${isImage
+          ? `<img src="${design.url}" alt="${design.name}" loading="lazy" />`
+          : `<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:2.5rem;background:rgba(255,255,255,0.04)">📄</div>`
+        }
+        <div class="design-type">${design.type || ''}</div>
+      </div>
+      <div class="design-info">
+        <div class="design-name">${design.name}</div>
+        ${dateStr ? `<div class="design-date">${dateStr}</div>` : ''}
+        <div style="margin-top:0.6rem;display:flex;gap:0.5rem;flex-wrap:wrap">
+          ${!isImage
+            ? `<a href="${design.url}" target="_blank" class="btn btn-outline" style="padding:0.4rem 0.85rem;font-size:0.7rem">View File</a>`
+            : `<a href="${design.url}" target="_blank" class="btn btn-outline" style="padding:0.4rem 0.85rem;font-size:0.7rem">Download</a>`
+          }
+        </div>
+        <div class="design-actions" style="margin-top:0.75rem">
+          ${isApproved
+            ? `<span class="status-badge status-done" style="margin-top:0.25rem;display:inline-block">✓ Approved</span>`
+            : `
+              <button class="btn btn-gold" style="padding:0.5rem 1rem;font-size:0.72rem"
+                onclick="approveDesign('${design._id}', true, this)">Approve</button>
+              <button class="btn btn-ghost" style="padding:0.5rem 1rem;font-size:0.72rem"
+                onclick="approveDesign('${design._id}', false, this)">Reject</button>
+            `
+          }
+        </div>
+      </div>`;
+    grid.appendChild(card);
+  });
+}
+
+// ── APPROVE / REJECT DESIGN ──────────────────────────────
+async function approveDesign(designId, approved, btn) {
+  try {
+    // Optimistic UI: disable buttons on the card immediately
+    const card = btn.closest('.design-card');
+    const btns = card?.querySelectorAll('button');
+    btns?.forEach(b => b.disabled = true);
+
+    await API.put(`/client/designs/${designId}/approve`, { approved });
+
+    // Update card in-place — no page reload
+    const actionsDiv = card?.querySelector('.design-actions');
+    if (actionsDiv) {
+      if (approved) {
+        card.classList.add('design-card--done');
+        actionsDiv.innerHTML = `<span class="status-badge status-done" style="margin-top:0.25rem;display:inline-block">✓ Approved</span>`;
+        showToast('✓ Design approved!', 'success');
+      } else {
+        actionsDiv.innerHTML = `<span class="status-badge" style="border-color:rgba(255,255,255,0.15);color:var(--text-muted)">Rejected</span>`;
+        showToast('Design rejected — admin notified.', 'gold');
+      }
+    }
+
+    // Refresh pending-review count in header badge
+    const allCards    = document.querySelectorAll('#panel-designs .design-card');
+    const pendingLeft = Array.from(allCards).filter(c => !c.classList.contains('design-card--done') && !c.querySelector('.status-badge')).length;
+    const badge = document.querySelector('#panel-designs .status-badge');
+    if (badge) {
+      const pending = document.querySelectorAll('#panel-designs .design-actions button[onclick*="true"]').length;
+      badge.textContent = pending > 0 ? `${pending} Pending Review` : 'All Reviewed';
+      badge.className   = `status-badge ${pending > 0 ? 'status-active' : 'status-done'}`;
+    }
+  } catch (err) {
+    if (err.message?.includes('401')) { Auth.logout(); return; }
+    showToast(`✗ ${err.message || 'Could not update design'}`, 'error');
+    // Re-enable on failure
+    btn.closest('.design-card')?.querySelectorAll('button').forEach(b => b.disabled = false);
+  }
 }
 
 // ── PAYMENTS ───────────────────────────────────────────────────
@@ -200,6 +311,8 @@ function showPanel(id) {
   document.getElementById('dashPageTitle').textContent = titles[id] || id;
   if (id === 'chat')     { const b = document.getElementById('chatBadge'); if (b) b.style.display = 'none'; }
   if (id === 'payments') loadPayments();
+  // Re-fetch and render designs every time Designs tab is opened
+  if (id === 'designs')  loadProjectData();
 }
 
 // Mobile sidebar

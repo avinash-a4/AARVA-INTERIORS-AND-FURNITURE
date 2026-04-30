@@ -19,6 +19,8 @@ function showAdminPanel(id) {
   document.getElementById('anav-' + id)?.classList.add('active');
   const titles = { clients:'Clients', projects:'Projects', 'designs-upload':'Upload Designs', 'payments-admin':'Payments', 'estimator-config':'Estimator Config' };
   document.getElementById('adminPageTitle').textContent = titles[id] || id;
+  // Populate project dropdown when switching to upload panel
+  if (id === 'designs-upload') loadDesignProjects();
 }
 
 function toggleSidebar() { document.getElementById('sidebar').classList.toggle('mobile-open'); }
@@ -334,10 +336,81 @@ function saveConfig(e) {
   showToast('✓ Estimator pricing saved successfully!', 'success');
 }
 
+// ── LOAD PROJECTS INTO UPLOAD DROPDOWN ────────────────────────
+async function loadDesignProjects() {
+  try {
+    const projects = await API.get('/admin/projects');
+    const select = document.getElementById('design_client');
+    if (!select) return;
+    select.innerHTML = '<option value="">— Select a project —</option>';
+    projects.forEach(project => {
+      const clientName = project.clientId?.name ?? 'Unknown';
+      const option = document.createElement('option');
+      option.value = project._id;
+      option.textContent = `${clientName} – ${project.title}`;
+      select.appendChild(option);
+    });
+  } catch (err) {
+    console.error('Error loading projects for upload:', err);
+  }
+}
+
 // ── UPLOAD DESIGN ──────────────────────────────────────────────
-function uploadDesign(e) {
+async function uploadDesign(e) {
   e.preventDefault();
-  showToast('✓ Designs uploaded and client notified!', 'success');
+
+  const projectId = document.getElementById('design_client')?.value?.trim();
+  const type      = document.getElementById('design_type')?.value?.trim();
+  const fileInput = document.getElementById('fileInput');
+  const file      = fileInput?.files?.[0];
+
+  // Validation
+  if (!projectId) { showToast('✗ Please select a project', 'error'); return; }
+  if (!type)      { showToast('✗ Please select a design type', 'error'); return; }
+  if (!file)      { showToast('✗ Please select a file to upload', 'error'); return; }
+
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Uploading…'; }
+
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('name', file.name);
+    formData.append('type', type);
+
+    const res = await fetch(`${API.BASE}/admin/projects/${projectId}/designs/upload`, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + Auth.getToken() },
+      body: formData,
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Upload failed');
+
+    showToast('✓ Design uploaded successfully!', 'success');
+    e.target.reset();
+    document.getElementById('uploadedFiles').innerHTML = '';
+
+    // Show quick preview of uploaded URL
+    const design = data.design;
+    if (design?.url) {
+      const preview = document.getElementById('uploadedFiles');
+      const isImage = design.url.includes('/image/');
+      preview.innerHTML = `
+        <div class="uploaded-file" style="flex-direction:column;gap:0.5rem;padding:1rem">
+          ${isImage
+            ? `<img src="${design.url}" alt="${design.name}" style="max-height:140px;border-radius:6px;object-fit:cover" />`
+            : `<a href="${design.url}" target="_blank" class="btn btn-outline" style="padding:0.4rem 1rem;font-size:0.7rem">View Uploaded File</a>`
+          }
+          <span style="color:var(--gold);font-size:0.78rem">✓ ${design.name} uploaded</span>
+        </div>`;
+    }
+  } catch (err) {
+    if (err.message?.includes('401')) { Auth.logout(); return; }
+    showToast(`✗ ${err.message || 'Upload failed'}`, 'error');
+  } finally {
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Upload & Notify Client'; }
+  }
 }
 
 // ── FILE INPUT DISPLAY ─────────────────────────────────────────

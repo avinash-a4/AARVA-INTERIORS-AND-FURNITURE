@@ -171,10 +171,10 @@
       <div class="dash-card-body">
         <form class="upload-form" onsubmit="uploadDesign(event)">
           <div class="form-group"><label class="form-label">Select Client</label>
-            <select class="form-input"><option>Rahul Mehta – 3BHK Imperial</option><option>Arjun Reddy – 4BHK Villa</option></select>
+            <select class="form-input" id="design_client"><option value="">— Loading projects… —</option></select>
           </div>
           <div class="form-group"><label class="form-label">Design Type</label>
-            <select class="form-input"><option>2D Floor Plan</option><option>3D Render</option><option>Site Photo</option><option>Material Board</option></select>
+            <select class="form-input" id="design_type"><option value="2D Floor Plan">2D Floor Plan</option><option value="3D Render">3D Render</option><option value="Site Photo">Site Photo</option><option value="Material Board">Material Board</option></select>
           </div>
           <div class="form-group"><label class="form-label">File</label>
             <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
