@@ -5,6 +5,7 @@ const User       = require('../models/User');
 const Project    = require('../models/Project');
 const Payment    = require('../models/Payment');
 const Message    = require('../models/Message');
+const Query      = require('../models/Query');
 const { protect, adminOnly } = require('../middleware/auth');
 const upload     = require('../middleware/upload');
 const cloudinary = require('../config/cloudinary');
@@ -37,9 +38,61 @@ router.post('/projects', async (req, res) => {
 
 // PUT /api/admin/projects/:id
 router.put('/projects/:id', async (req, res) => {
-  const project = await Project.findByIdAndUpdate(req.params.id, req.body, { new: true });
-  if (!project) return res.status(404).json({ message: 'Project not found' });
-  res.json(project);
+  try {
+    const { timeline, ...rest } = req.body;
+    const update = { ...rest };
+
+    // If timeline is being updated, also push recentUpdates entries
+    if (Array.isArray(timeline)) {
+      update.timeline = timeline;
+      const updates = timeline
+        .filter(t => t.status === 'done' || t.status === 'in-progress')
+        .map(t => ({
+          message: `${t.phase} marked as ${t.status === 'done' ? 'Completed' : 'In Progress'}${t.note ? ': ' + t.note : ''}`,
+          date: new Date(),
+        }));
+      if (updates.length) {
+        update.$push = { recentUpdates: { $each: updates } };
+      }
+    }
+
+    const project = await Project.findByIdAndUpdate(req.params.id, update, { new: true });
+    if (!project) return res.status(404).json({ message: 'Project not found' });
+    res.json(project);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// DELETE /api/admin/clients/:id  (cascade-deletes linked project)
+router.delete('/clients/:id', async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ message: 'Client not found' });
+
+    if (user.projectId) {
+      await Project.findByIdAndDelete(user.projectId);
+    }
+
+    await User.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Client deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// DELETE /api/admin/projects/:id  (clears projectId on linked client)
+router.delete('/projects/:id', async (req, res) => {
+  try {
+    const project = await Project.findById(req.params.id);
+    if (!project) return res.status(404).json({ message: 'Project not found' });
+
+    await User.findByIdAndUpdate(project.clientId, { $unset: { projectId: '' } });
+    await Project.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Project deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
 
 // POST /api/admin/projects/:id/timeline
@@ -157,20 +210,69 @@ router.post('/projects/:id/designs/upload', upload.single('file'), async (req, r
 
 // GET /api/admin/payments
 router.get('/payments', async (req, res) => {
-  const payments = await Payment.find().populate('clientId', 'name').populate('projectId', 'title');
+  const payments = await Payment.find().populate('clientId', 'name').populate('projectId', 'title')
+    .sort('-createdAt');
   res.json(payments);
 });
 
-// POST /api/admin/payments
+// POST /api/admin/payments  — records payment + increments project.amountPaid
 router.post('/payments', async (req, res) => {
-  const payment = await Payment.create(req.body);
-  res.status(201).json(payment);
+  try {
+    const { projectId, clientId, amount, mode, description } = req.body;
+    if (!projectId || !clientId || !amount) {
+      return res.status(400).json({ message: 'projectId, clientId and amount are required' });
+    }
+
+    const payment = await Payment.create({
+      projectId, clientId,
+      amount:      Number(amount),
+      mode:        mode || 'Other',
+      description: description || '',
+      status:      'paid',
+      paidAt:      new Date(),
+    });
+
+    // Atomically increment project.amountPaid
+    const project = await Project.findByIdAndUpdate(
+      projectId,
+      { $inc: { amountPaid: Number(amount) } },
+      { new: true }
+    );
+
+    res.status(201).json({ payment, project });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
 
 // PUT /api/admin/payments/:id/mark-paid
 router.put('/payments/:id/mark-paid', async (req, res) => {
-  const payment = await Payment.findByIdAndUpdate(req.params.id, { status: 'paid', paidAt: new Date() }, { new: true });
+  const payment = await Payment.findByIdAndUpdate(
+    req.params.id,
+    { status: 'paid', paidAt: new Date() },
+    { new: true }
+  );
   res.json(payment);
+});
+
+// GET /api/admin/queries
+router.get('/queries', async (req, res) => {
+  const queries = await Query.find()
+    .populate('clientId', 'name email')
+    .populate('projectId', 'title')
+    .sort('-createdAt');
+  res.json(queries);
+});
+
+// PATCH /api/admin/queries/:id/resolve
+router.patch('/queries/:id/resolve', async (req, res) => {
+  const query = await Query.findByIdAndUpdate(
+    req.params.id,
+    { status: 'resolved' },
+    { new: true }
+  );
+  if (!query) return res.status(404).json({ message: 'Query not found' });
+  res.json(query);
 });
 
 // GET /api/admin/messages/:projectId

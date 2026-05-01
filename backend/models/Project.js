@@ -15,19 +15,26 @@ const DesignFileSchema = new mongoose.Schema({
   uploadedAt: { type: Date, default: Date.now },
 });
 
+const RecentUpdateSchema = new mongoose.Schema({
+  message: { type: String },
+  date:    { type: Date, default: Date.now },
+});
+
 const ProjectSchema = new mongoose.Schema({
-  title:      { type: String, required: true },
-  clientId:   { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  status:     { type: String, enum: ['consultation','design','material','execution','finishing','completed'], default: 'consultation' },
-  progress:   { type: Number, min: 0, max: 100, default: 0 },
-  package:    { type: String, enum: ['Basic','Standard','Premium'], default: 'Standard' },
-  totalCost:  { type: Number, default: 0 },
-  location:   { type: String },
-  startDate:  { type: Date },
-  endDate:    { type: Date },
-  timeline:   [TimelineEntrySchema],
-  designs:    [DesignFileSchema],
-  createdAt:  { type: Date, default: Date.now },
+  title:         { type: String, required: true },
+  clientId:      { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  status:        { type: String, enum: ['consultation','design','material','execution','finishing','completed'], default: 'consultation' },
+  progress:      { type: Number, min: 0, max: 100, default: 0 },
+  package:       { type: String, enum: ['Basic','Standard','Premium'], default: 'Standard' },
+  totalCost:     { type: Number, default: 0 },
+  amountPaid:    { type: Number, default: 0 },
+  location:      { type: String },
+  startDate:     { type: Date },
+  endDate:       { type: Date },
+  timeline:      [TimelineEntrySchema],
+  designs:       [DesignFileSchema],
+  recentUpdates: [RecentUpdateSchema],
+  createdAt:     { type: Date, default: Date.now },
 });
 
 module.exports = mongoose.model('Project', ProjectSchema);

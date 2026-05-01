@@ -61,19 +61,25 @@ function showNoProjectMessage() {
 function renderOverview(project) {
   if (!project) return;
 
-  // ── Stat cards ──
   const progressVal = project.progress ?? 0;
-  const totalCost   = project.totalCost ?? 0;
+  const totalCost   = project.totalCost   ?? 0;
+  const amountPaid  = project.amountPaid  ?? 0;
+  const balance     = Math.max(0, totalCost - amountPaid);
 
-  // Progress card
+  // ── Stat cards (Overview) ──
   const progCard = document.querySelector('.stat-card:nth-child(1) .stat-card-val');
   if (progCard) progCard.textContent = progressVal + '%';
 
-  // Amount paid card — derive from totalCost * (progress/100) as approximation
   const costCard = document.querySelector('.stat-card:nth-child(2) .stat-card-val');
-  if (costCard && totalCost) {
-    const paid = Math.round((progressVal / 100) * totalCost);
-    costCard.textContent = '₹ ' + formatINR(paid);
+  if (costCard) costCard.textContent = '₹ ' + formatINR(amountPaid);
+
+  // Days left from endDate
+  const daysCard = document.querySelector('.stat-card:nth-child(3) .stat-card-val');
+  if (daysCard && project.endDate) {
+    const diff = Math.ceil((new Date(project.endDate) - new Date()) / (1000 * 60 * 60 * 24));
+    daysCard.textContent = diff > 0 ? diff + ' days' : 'Completed';
+    const label = document.querySelector('.stat-card:nth-child(3) .stat-card-label');
+    if (label) label.textContent = diff > 0 ? 'Days Left' : 'Status';
   }
 
   // ── Project card header ──
@@ -106,13 +112,24 @@ function renderOverview(project) {
   const barLabel = document.querySelector('.progress-labels .text-gold');
   if (barLabel) barLabel.textContent = progressVal + '%';
 
-  // ── Timeline phases (if backend provides them) ──
+  // ── Timeline phases ──
   if (Array.isArray(project.timeline) && project.timeline.length > 0) {
     renderTimeline(project.timeline);
   }
 
   // ── Designs ──
   renderDesigns(Array.isArray(project.designs) ? project.designs : []);
+
+  // ── Recent Updates ──
+  renderRecentUpdates(Array.isArray(project.recentUpdates) ? project.recentUpdates : []);
+
+  // ── Payments panel stat cards (use project fields directly) ──
+  const totalEl   = document.getElementById('client_total_cost');
+  const paidEl    = document.getElementById('client_amount_paid');
+  const balanceEl = document.getElementById('client_balance');
+  if (totalEl)   totalEl.textContent   = '₹ ' + formatINR(totalCost);
+  if (paidEl)    paidEl.textContent    = '₹ ' + formatINR(amountPaid);
+  if (balanceEl) balanceEl.textContent = '₹ ' + formatINR(balance);
 }
 
 function renderTimeline(timeline) {
@@ -141,6 +158,28 @@ function renderTimeline(timeline) {
           <div class="tl-title">${entry.phase}</div>
           ${entry.note ? `<div class="tl-desc">${entry.note}</div>` : ''}
           <span class="status-badge ${badgeCls}">${badgeTxt}</span>
+        </div>
+      </div>`);
+  });
+}
+
+// ── RECENT UPDATES ──────────────────────────────────────────────
+function renderRecentUpdates(updates) {
+  const list = document.querySelector('#panel-overview .activity-list');
+  if (!list) return;
+  if (!updates.length) return;
+
+  list.innerHTML = '';
+  updates.slice(0, 6).forEach((upd, i) => {
+    const dateStr = upd.date
+      ? new Date(upd.date).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' })
+      : '';
+    list.insertAdjacentHTML('beforeend', `
+      <div class="activity-item">
+        <div class="activity-dot ${i < 2 ? 'gold' : ''}"></div>
+        <div>
+          <div class="activity-msg">${upd.message}</div>
+          ${dateStr ? `<div class="activity-time">${dateStr}</div>` : ''}
         </div>
       </div>`);
   });
@@ -193,10 +232,7 @@ function renderDesigns(designs) {
         <div class="design-name">${design.name}</div>
         ${dateStr ? `<div class="design-date">${dateStr}</div>` : ''}
         <div style="margin-top:0.6rem;display:flex;gap:0.5rem;flex-wrap:wrap">
-          ${!isImage
-            ? `<button class="btn btn-outline" style="padding:0.4rem 0.85rem;font-size:0.7rem" onclick="openDesign('${design.url}')">View File</button>`
-            : `<button class="btn btn-outline" style="padding:0.4rem 0.85rem;font-size:0.7rem" onclick="openDesign('${design.url}')">View File</button>`
-          }
+          <button class="btn btn-outline" style="padding:0.4rem 0.85rem;font-size:0.7rem" onclick="openDesign('${design.url}')">View File</button>
         </div>
         <div class="design-actions" style="margin-top:0.75rem">
           ${isApproved
@@ -217,30 +253,24 @@ function renderDesigns(designs) {
 // ── OPEN DESIGN IN NEW TAB ──────────────────────────────
 function openDesign(url) {
   if (url.includes('drive.google.com')) {
-    // Extract the file ID from any Drive URL format:
-    // /file/d/<id>/view, /open?id=<id>, /uc?id=<id>, etc.
     const match = url.match(/[-\w]{25,}/);
     if (match) {
-      const previewUrl = `https://drive.google.com/file/d/${match[0]}/preview`;
-      window.open(previewUrl, '_blank');
+      window.open(`https://drive.google.com/file/d/${match[0]}/preview`, '_blank');
       return;
     }
   }
-  // Non-Drive URLs (images, etc.) open directly
   window.open(url, '_blank');
 }
 
 // ── APPROVE / REJECT DESIGN ──────────────────────────────
 async function approveDesign(designId, approved, btn) {
   try {
-    // Optimistic UI: disable buttons on the card immediately
     const card = btn.closest('.design-card');
     const btns = card?.querySelectorAll('button');
     btns?.forEach(b => b.disabled = true);
 
     await API.put(`/client/designs/${designId}/approve`, { approved });
 
-    // Update card in-place — no page reload
     const actionsDiv = card?.querySelector('.design-actions');
     if (actionsDiv) {
       if (approved) {
@@ -252,20 +282,9 @@ async function approveDesign(designId, approved, btn) {
         showToast('Design rejected — admin notified.', 'gold');
       }
     }
-
-    // Refresh pending-review count in header badge
-    const allCards    = document.querySelectorAll('#panel-designs .design-card');
-    const pendingLeft = Array.from(allCards).filter(c => !c.classList.contains('design-card--done') && !c.querySelector('.status-badge')).length;
-    const badge = document.querySelector('#panel-designs .status-badge');
-    if (badge) {
-      const pending = document.querySelectorAll('#panel-designs .design-actions button[onclick*="true"]').length;
-      badge.textContent = pending > 0 ? `${pending} Pending Review` : 'All Reviewed';
-      badge.className   = `status-badge ${pending > 0 ? 'status-active' : 'status-done'}`;
-    }
   } catch (err) {
     if (err.message?.includes('401')) { Auth.logout(); return; }
     showToast(`✗ ${err.message || 'Could not update design'}`, 'error');
-    // Re-enable on failure
     btn.closest('.design-card')?.querySelectorAll('button').forEach(b => b.disabled = false);
   }
 }
@@ -274,17 +293,16 @@ async function approveDesign(designId, approved, btn) {
 async function loadPayments() {
   try {
     const payments = await API.get('/client/payments');
-    if (!payments || !payments.length) return;
-
-    const tbody = document.querySelector('#panel-payments .pay-table tbody');
+    const tbody = document.getElementById('clientPaymentsBody');
     if (!tbody) return;
-    tbody.innerHTML = '';
 
-    let paid = 0, pending = 0, total = 0;
+    if (!payments || !payments.length) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:2rem">No payments recorded yet</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = '';
     payments.forEach(p => {
-      total += p.amount ?? 0;
-      if (p.status === 'paid') paid += p.amount ?? 0;
-      else pending += p.amount ?? 0;
       const dateStr = p.paidAt
         ? new Date(p.paidAt).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' })
         : (p.dueDate ? new Date(p.dueDate).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) : '—');
@@ -297,15 +315,60 @@ async function loadPayments() {
           <td><span class="status-badge ${p.status === 'paid' ? 'status-done' : 'status-active'}">${p.status === 'paid' ? 'Paid' : 'Pending'}</span></td>
         </tr>`);
     });
-
-    // Update stat cards in payments panel
-    const cards = document.querySelectorAll('#panel-payments .stat-card .stat-card-val');
-    if (cards[0]) cards[0].textContent = '₹ ' + formatINR(total);
-    if (cards[1]) cards[1].textContent = '₹ ' + formatINR(paid);
-    if (cards[2]) cards[2].textContent = '₹ ' + formatINR(pending);
   } catch (err) {
     if (err.message?.includes('401')) { Auth.logout(); return; }
     console.warn('Payments load error:', err.message);
+  }
+}
+
+// ── QUERY SYSTEM ───────────────────────────────────────────────
+async function submitQuery(e) {
+  e.preventDefault();
+  const message = document.getElementById('queryMessage')?.value?.trim();
+  if (!message) return;
+
+  const btn = document.getElementById('querySubmitBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Submitting…'; }
+
+  try {
+    await API.post('/client/query', { message });
+    document.getElementById('queryMessage').value = '';
+    const successEl = document.getElementById('querySuccess');
+    if (successEl) successEl.style.display = 'block';
+    showToast('✓ Query submitted!', 'success');
+    loadMyQueries();
+  } catch (err) {
+    if (err.message?.includes('401')) { Auth.logout(); return; }
+    showToast(`✗ ${err.message || 'Failed to submit query'}`, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Submit Query'; }
+  }
+}
+
+async function loadMyQueries() {
+  try {
+    const queries = await API.get('/client/queries');
+    const tbody = document.getElementById('myQueriesBody');
+    if (!tbody) return;
+
+    if (!queries || !queries.length) {
+      tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--text-muted);padding:2rem">No queries yet</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = '';
+    queries.forEach(q => {
+      const dateStr = new Date(q.createdAt).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' });
+      tbody.insertAdjacentHTML('beforeend', `
+        <tr>
+          <td>${dateStr}</td>
+          <td style="max-width:260px;white-space:normal">${q.message}</td>
+          <td><span class="status-badge ${q.status === 'resolved' ? 'status-done' : 'status-active'}">${q.status === 'resolved' ? 'Resolved' : 'Open'}</span></td>
+        </tr>`);
+    });
+  } catch (err) {
+    if (err.message?.includes('401')) { Auth.logout(); return; }
+    console.warn('Queries load error:', err.message);
   }
 }
 
@@ -323,50 +386,14 @@ function showPanel(id) {
   document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
   document.getElementById('panel-' + id)?.classList.add('active');
   document.getElementById('nav-' + id)?.classList.add('active');
-  const titles = { overview:'Overview', designs:'Designs', timeline:'Timeline', payments:'Payments', documents:'Documents', chat:'Message Chat' };
+  const titles = { overview:'Overview', designs:'Designs', timeline:'Timeline', payments:'Payments', queries:'Raise a Query' };
   document.getElementById('dashPageTitle').textContent = titles[id] || id;
-  if (id === 'chat')     { const b = document.getElementById('chatBadge'); if (b) b.style.display = 'none'; }
-  if (id === 'payments') loadPayments();
-  // Re-fetch and render designs every time Designs tab is opened
+  if (id === 'payments') { loadPayments(); loadProjectData(); }
   if (id === 'designs')  loadProjectData();
+  if (id === 'queries')  loadMyQueries();
 }
 
 // Mobile sidebar
 function toggleSidebar() {
   document.getElementById('sidebar').classList.toggle('mobile-open');
 }
-
-// ── CHAT ───────────────────────────────────────────────────────
-function sendChat() {
-  const input = document.getElementById('chatInput');
-  const msg = input.value.trim();
-  if (!msg) return;
-  const container = document.getElementById('chatMessages');
-  const div = document.createElement('div');
-  div.className = 'chat-msg self';
-  const now = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
-  div.innerHTML = `<div class="chat-bubble">${msg}</div><div class="chat-time">Just now · You</div>`;
-  container.appendChild(div);
-  input.value = '';
-  container.scrollTop = container.scrollHeight;
-
-  // Post to backend (fire-and-forget, no UI break on failure)
-  API.post('/client/messages', { text: msg }).catch(err => {
-    if (err.message?.includes('401')) Auth.logout();
-    console.warn('Chat send error:', err.message);
-  });
-
-  // Simulate reply
-  setTimeout(() => {
-    const reply = document.createElement('div');
-    reply.className = 'chat-msg team';
-    reply.innerHTML = `<div class="chat-bubble">Thanks for your message! Our team will respond shortly. 🙏</div><div class="chat-time">${now} · AARAV Team</div>`;
-    container.appendChild(reply);
-    container.scrollTop = container.scrollHeight;
-  }, 1800);
-}
-
-// Enter = send
-document.getElementById('chatInput')?.addEventListener('keydown', e => {
-  if (e.key === 'Enter') sendChat();
-});

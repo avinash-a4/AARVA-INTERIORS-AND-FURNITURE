@@ -9,6 +9,8 @@ document.addEventListener('DOMContentLoaded', () => {
   if (user?.role !== 'admin') { window.location.href = 'dashboard.html'; return; }
   loadClients();
   loadProjects();
+  loadAdminPayments();
+  loadQueries();
 });
 
 // Panel switching
@@ -17,10 +19,11 @@ function showAdminPanel(id) {
   document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
   document.getElementById('panel-' + id)?.classList.add('active');
   document.getElementById('anav-' + id)?.classList.add('active');
-  const titles = { clients:'Clients', projects:'Projects', 'designs-upload':'Upload Designs', 'payments-admin':'Payments', 'estimator-config':'Estimator Config' };
+  const titles = { clients:'Clients', projects:'Projects', 'designs-upload':'Upload Designs', 'payments-admin':'Payments', queries:'Queries', 'estimator-config':'Estimator Config' };
   document.getElementById('adminPageTitle').textContent = titles[id] || id;
-  // Populate project dropdown when switching to upload panel
-  if (id === 'designs-upload') loadDesignProjects();
+  if (id === 'designs-upload')  loadDesignProjects();
+  if (id === 'payments-admin')  loadAdminPayments();
+  if (id === 'queries')         loadQueries();
 }
 
 function toggleSidebar() { document.getElementById('sidebar').classList.toggle('mobile-open'); }
@@ -52,6 +55,8 @@ async function loadClients() {
         <td>${client.phone || '-'}</td>
         <td>${client.projectId?.title || '—'}</td>
         <td><span class="status-badge ${hasProject ? 'status-active' : ''}">${hasProject ? 'Active' : 'No Project'}</span></td>
+        <td><button class="btn btn-ghost" style="padding:0.3rem 0.75rem;font-size:0.68rem;color:#ff6b6b;border-color:#ff6b6b"
+          onclick="deleteClient('${client._id}')">Delete</button></td>
       `;
       tableBody.appendChild(row);
     });
@@ -86,6 +91,33 @@ async function loadProjects() {
   } catch (err) {
     if (err.message?.includes('401')) { Auth.logout(); return; }
     console.warn('Projects load error:', err.message);
+  }
+}
+
+// ── DELETE CLIENT ──────────────────────────────────────────
+async function deleteClient(id) {
+  if (!confirm('Delete this client? Their linked project will also be deleted.')) return;
+  try {
+    await API.delete(`/admin/clients/${id}`);
+    showToast('✓ Client deleted', 'success');
+    loadClients();
+  } catch (err) {
+    if (err.message?.includes('401')) { Auth.logout(); return; }
+    showToast(`✗ ${err.message || 'Failed to delete client'}`, 'error');
+  }
+}
+
+// ── DELETE PROJECT ──────────────────────────────────────────
+async function deleteProject(id) {
+  if (!confirm('Delete this project? The client will be unlinked.')) return;
+  try {
+    await API.delete(`/admin/projects/${id}`);
+    showToast('✓ Project deleted', 'success');
+    loadProjects();
+    loadClients(); // refresh status column
+  } catch (err) {
+    if (err.message?.includes('401')) { Auth.logout(); return; }
+    showToast(`✗ ${err.message || 'Failed to delete project'}`, 'error');
   }
 }
 
@@ -133,6 +165,8 @@ function renderProjects(projects) {
             onclick="openEditModal('${project._id}', ${progress}, '${project.status}')">Edit</button>
           <button class="btn btn-ghost" style="padding:0.4rem 1rem;font-size:0.7rem"
             onclick="openTimelineModal('${project._id}')">Update Timeline</button>
+          <button class="btn btn-ghost" style="padding:0.4rem 1rem;font-size:0.7rem;color:#ff6b6b;border-color:#ff6b6b"
+            onclick="deleteProject('${project._id}')">Delete</button>
         </div>
       </div>
     `;
@@ -165,13 +199,21 @@ async function createProject(e) {
   e.preventDefault();
   const title     = document.getElementById('np_title').value.trim();
   const clientId  = document.getElementById('np_client').value.trim();
+  const pkg       = document.getElementById('np_pkg')?.value ?? 'Standard';
+  const location  = document.getElementById('np_location')?.value?.trim() ?? '';
+  const totalCost = document.getElementById('np_cost')?.value ?? '';
   const startDate = document.getElementById('np_date')?.value ?? '';
+  const endDate   = document.getElementById('np_enddate')?.value ?? '';
 
   try {
     await API.post('/admin/projects', {
       title,
       clientId,
+      package:   pkg,
+      location:  location || undefined,
+      totalCost: totalCost ? Number(totalCost) : undefined,
       startDate: startDate || undefined,
+      endDate:   endDate   || undefined,
     });
     showToast(`✓ Project "${title}" created!`, 'success');
     toggleModal('createProjectModal');
@@ -385,4 +427,146 @@ async function uploadDesign(e) {
   }
 }
 
+// \u2500\u2500 ADMIN PAYMENTS \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+async function loadAdminPayments() {
+  try {
+    const payments = await API.get('/admin/payments');
+    const tbody = document.getElementById('adminPaymentsBody');
+    if (!tbody) return;
 
+    let total = 0;
+    tbody.innerHTML = '';
+    payments.forEach(p => {
+      total += p.amount ?? 0;
+      const dateStr = p.paidAt
+        ? new Date(p.paidAt).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' })
+        : '\u2014';
+      tbody.insertAdjacentHTML('beforeend', `
+        <tr>
+          <td>${p.clientId?.name ?? '\u2014'}</td>
+          <td>${p.projectId?.title ?? '\u2014'}</td>
+          <td>${dateStr}</td>
+          <td>\u20b9 ${(p.amount ?? 0).toLocaleString('en-IN')}</td>
+          <td>${p.mode ?? '\u2014'}</td>
+          <td>${p.description || '\u2014'}</td>
+        </tr>`);
+    });
+
+    const el = (id) => document.getElementById(id);
+    const latest = payments[0]?.amount ?? 0;
+    if (el('pay_total'))     el('pay_total').textContent     = '\u20b9 ' + formatAdminINR(total);
+    if (el('pay_collected')) el('pay_collected').textContent = payments.length.toString();
+    if (el('pay_pending'))   el('pay_pending').textContent   = '\u20b9 ' + formatAdminINR(latest);
+  } catch (err) {
+    if (err.message?.includes('401')) { Auth.logout(); return; }
+    console.warn('Admin payments load error:', err.message);
+  }
+}
+
+function formatAdminINR(n) {
+  if (!n) return '0';
+  if (n >= 100000) return (n / 100000).toFixed(1).replace(/\.0$/, '') + 'L';
+  if (n >= 1000)   return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+  return n.toString();
+}
+
+async function openPaymentModal() {
+  try {
+    const projects = await API.get('/admin/projects');
+    const sel = document.getElementById('pay_project');
+    if (sel) {
+      sel.innerHTML = '<option value="">— Select Project —</option>';
+      projects.forEach(p => {
+        const clientName = p.clientId?.name ?? 'Unknown';
+        const opt = document.createElement('option');
+        opt.value = JSON.stringify({ projectId: p._id, clientId: p.clientId?._id ?? p.clientId });
+        opt.textContent = `${clientName} \u2013 ${p.title}`;
+        sel.appendChild(opt);
+      });
+    }
+  } catch (err) { console.error(err); }
+  document.getElementById('updatePaymentModal')?.classList.remove('hidden');
+}
+
+function closePaymentModal() {
+  document.getElementById('updatePaymentModal')?.classList.add('hidden');
+}
+
+async function submitPayment(e) {
+  e.preventDefault();
+  const projectRaw = document.getElementById('pay_project')?.value;
+  const amount     = document.getElementById('pay_amount')?.value;
+  const mode       = document.getElementById('pay_mode')?.value;
+  const desc       = document.getElementById('pay_desc')?.value?.trim();
+
+  if (!projectRaw) { showToast('\u2717 Select a project', 'error'); return; }
+  if (!amount || Number(amount) <= 0) { showToast('\u2717 Enter a valid amount', 'error'); return; }
+
+  const { projectId, clientId } = JSON.parse(projectRaw);
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Saving\u2026'; }
+
+  try {
+    await API.post('/admin/payments', { projectId, clientId, amount: Number(amount), mode, description: desc });
+    showToast('\u2713 Payment recorded!', 'success');
+    closePaymentModal();
+    e.target.reset();
+    loadAdminPayments();
+    loadProjects();
+  } catch (err) {
+    if (err.message?.includes('401')) { Auth.logout(); return; }
+    showToast(`\u2717 ${err.message || 'Failed to record payment'}`, 'error');
+  } finally {
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Record Payment'; }
+  }
+}
+
+// \u2500\u2500 QUERIES \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+async function loadQueries() {
+  try {
+    const queries = await API.get('/admin/queries');
+    const tbody = document.getElementById('queriesBody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    if (!queries.length) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:2rem">No queries yet</td></tr>';
+      return;
+    }
+    queries.forEach(q => {
+      const dateStr = new Date(q.createdAt).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' });
+      const isOpen  = q.status === 'open';
+      tbody.insertAdjacentHTML('beforeend', `
+        <tr id="query-row-${q._id}">
+          <td>${q.clientId?.name ?? '\u2014'}</td>
+          <td>${q.projectId?.title ?? '\u2014'}</td>
+          <td style="max-width:240px;white-space:normal">${q.message}</td>
+          <td>${dateStr}</td>
+          <td><span class="status-badge ${isOpen ? 'status-active' : 'status-done'}">${isOpen ? 'Open' : 'Resolved'}</span></td>
+          <td>${isOpen
+            ? `<button class="btn btn-ghost" style="padding:0.3rem 0.75rem;font-size:0.68rem"
+                onclick="resolveQuery('${q._id}')">Mark Resolved</button>`
+            : '\u2014'
+          }</td>
+        </tr>`);
+    });
+  } catch (err) {
+    if (err.message?.includes('401')) { Auth.logout(); return; }
+    console.warn('Queries load error:', err.message);
+  }
+}
+
+async function resolveQuery(id) {
+  try {
+    await API.req('PATCH', `/admin/queries/${id}/resolve`);
+    const row = document.getElementById(`query-row-${id}`);
+    if (row) {
+      row.querySelector('.status-badge').textContent = 'Resolved';
+      row.querySelector('.status-badge').className   = 'status-badge status-done';
+      row.querySelector('td:last-child').textContent = '\u2014';
+    }
+    showToast('\u2713 Query marked resolved', 'success');
+  } catch (err) {
+    if (err.message?.includes('401')) { Auth.logout(); return; }
+    showToast(`\u2717 ${err.message || 'Failed to resolve query'}`, 'error');
+  }
+}

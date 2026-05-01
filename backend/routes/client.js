@@ -3,6 +3,7 @@ const router  = express.Router();
 const Project = require('../models/Project');
 const Payment = require('../models/Payment');
 const Message = require('../models/Message');
+const Query   = require('../models/Query');
 const { protect } = require('../middleware/auth');
 
 router.use(protect);
@@ -46,6 +47,31 @@ router.put('/designs/:designId/approve', async (req, res) => {
   design.approved = req.body.approved !== false;
   await project.save();
   res.json({ message: 'Design status updated', design });
+});
+
+// GET /api/client/queries  — fetch own queries
+router.get('/queries', async (req, res) => {
+  try {
+    const queries = await Query.find({ clientId: req.user._id }).sort('-createdAt');
+    res.json(queries);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// POST /api/client/query  — raise a query
+router.post('/query', async (req, res) => {
+  try {
+    const project = await Project.findOne({ clientId: req.user._id });
+    const query = await Query.create({
+      clientId:  req.user._id,
+      projectId: project?._id || null,
+      message:   req.body.message,
+    });
+    res.status(201).json(query);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
 
 module.exports = router;

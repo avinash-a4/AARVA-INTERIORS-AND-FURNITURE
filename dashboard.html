@@ -35,14 +35,9 @@
       <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
       Payments
     </button>
-    <button class="sidebar-link" onclick="showPanel('documents')" id="nav-documents">
-      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-      Documents
-    </button>
-    <button class="sidebar-link" onclick="showPanel('chat')" id="nav-chat">
+    <button class="sidebar-link" onclick="showPanel('queries')" id="nav-queries">
       <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-      Chat
-      <span class="sidebar-badge" id="chatBadge">2</span>
+      Raise a Query
     </button>
   </nav>
   <div class="sidebar-user">
@@ -256,85 +251,46 @@
   <!-- ──── PAYMENTS PANEL ──── -->
   <div class="panel" id="panel-payments">
     <div class="panel-grid-3 mb-4">
-      <div class="stat-card"><div class="stat-card-val text-gold">₹ 14L</div><div class="stat-card-label">Total Project Cost</div></div>
-      <div class="stat-card"><div class="stat-card-val" style="color:#4CAF50">₹ 8.4L</div><div class="stat-card-label">Amount Paid</div></div>
-      <div class="stat-card"><div class="stat-card-val" style="color:#FF6B6B">₹ 5.6L</div><div class="stat-card-label">Balance Due</div></div>
+      <div class="stat-card"><div class="stat-card-val text-gold" id="client_total_cost">₹ 0</div><div class="stat-card-label">Total Project Cost</div></div>
+      <div class="stat-card"><div class="stat-card-val" style="color:#4CAF50" id="client_amount_paid">₹ 0</div><div class="stat-card-label">Amount Paid</div></div>
+      <div class="stat-card"><div class="stat-card-val" style="color:#FF6B6B" id="client_balance">₹ 0</div><div class="stat-card-label">Balance Due</div></div>
     </div>
     <div class="dash-card">
       <div class="dash-card-header"><h3 class="dash-card-title">Payment History</h3></div>
-      <div class="dash-card-body">
+      <div class="dash-card-body" style="padding:0">
         <table class="pay-table">
           <thead><tr><th>Date</th><th>Description</th><th>Amount</th><th>Mode</th><th>Status</th></tr></thead>
-          <tbody>
-            <tr><td>Mar 1, 2026</td><td>Booking Advance</td><td>₹ 1,40,000</td><td>Bank Transfer</td><td><span class="status-badge status-done">Paid</span></td></tr>
-            <tr><td>Mar 20, 2026</td><td>Phase 1 – Design</td><td>₹ 3,50,000</td><td>Cheque</td><td><span class="status-badge status-done">Paid</span></td></tr>
-            <tr><td>Apr 20, 2026</td><td>Phase 2 – Materials</td><td>₹ 3,50,000</td><td>UPI</td><td><span class="status-badge status-done">Paid</span></td></tr>
-            <tr><td>May 10, 2026</td><td>Phase 3 – Execution</td><td>₹ 3,50,000</td><td>—</td><td><span class="status-badge status-active">Pending</span></td></tr>
-            <tr><td>May 15, 2026</td><td>Final Balance</td><td>₹ 2,10,000</td><td>—</td><td><span class="status-badge status-active">Pending</span></td></tr>
-          </tbody>
+          <tbody id="clientPaymentsBody"><tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:2rem">Loading payments…</td></tr></tbody>
         </table>
       </div>
     </div>
   </div>
 
-  <!-- ──── DOCUMENTS PANEL ──── -->
-  <div class="panel" id="panel-documents">
+  <!-- ──── QUERIES PANEL ──── -->
+  <div class="panel" id="panel-queries">
     <div class="dash-card">
-      <div class="dash-card-header"><h3 class="dash-card-title">Project Documents</h3></div>
+      <div class="dash-card-header"><h3 class="dash-card-title">Raise a Query</h3></div>
       <div class="dash-card-body">
-        <div class="doc-list">
-          <div class="doc-item">
-            <div class="doc-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C6A969" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-            </div>
-            <div class="doc-info"><div class="doc-name">Design Agreement.pdf</div><div class="doc-date">Mar 1, 2026</div></div>
-            <button class="btn btn-outline" style="padding:0.4rem 1rem;font-size:0.7rem" onclick="showToast('Downloading...','gold')">Download</button>
+        <form id="queryForm" onsubmit="submitQuery(event)">
+          <div class="form-group">
+            <label class="form-label">Your Message</label>
+            <textarea class="form-input" id="queryMessage" rows="4" placeholder="Describe your query or concern…" required style="resize:vertical;min-height:110px"></textarea>
           </div>
-          <div class="doc-item">
-            <div class="doc-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C6A969" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13h2l1 2 2-4 1 2h2"/></svg>
-            </div>
-            <div class="doc-info"><div class="doc-name">2D Floor Plan – Full Home.pdf</div><div class="doc-date">Mar 15, 2026</div></div>
-            <button class="btn btn-outline" style="padding:0.4rem 1rem;font-size:0.7rem" onclick="showToast('Downloading...','gold')">Download</button>
-          </div>
-          <div class="doc-item">
-            <div class="doc-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C6A969" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="12" y2="16"/></svg>
-            </div>
-            <div class="doc-info"><div class="doc-name">Invoice #2026-001.pdf</div><div class="doc-date">Mar 20, 2026</div></div>
-            <button class="btn btn-outline" style="padding:0.4rem 1rem;font-size:0.7rem" onclick="showToast('Downloading...','gold')">Download</button>
-          </div>
-          <div class="doc-item">
-            <div class="doc-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C6A969" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="12" y2="16"/></svg>
-            </div>
-            <div class="doc-info"><div class="doc-name">Invoice #2026-002.pdf</div><div class="doc-date">Apr 20, 2026</div></div>
-            <button class="btn btn-outline" style="padding:0.4rem 1rem;font-size:0.7rem" onclick="showToast('Downloading...','gold')">Download</button>
-          </div>
-          <div class="doc-item">
-            <div class="doc-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C6A969" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>
-            </div>
-            <div class="doc-info"><div class="doc-name">Material Specification Sheet.pdf</div><div class="doc-date">Mar 18, 2026</div></div>
-            <button class="btn btn-outline" style="padding:0.4rem 1rem;font-size:0.7rem" onclick="showToast('Downloading...','gold')">Download</button>
-          </div>
+          <button type="submit" class="btn btn-gold" id="querySubmitBtn">Submit Query</button>
+        </form>
+        <div id="querySuccess" style="display:none;margin-top:1rem;padding:1rem;border:1px solid rgba(198,169,105,0.3);border-radius:8px;color:var(--gold);font-size:0.875rem">
+          ✓ Your query has been submitted. The AARAV team will reach out to you soon.
         </div>
       </div>
     </div>
-  </div>
 
-  <!-- ──── CHAT PANEL ──── -->
-  <div class="panel" id="panel-chat">
-    <div class="chat-wrap">
-      <div class="chat-messages" id="chatMessages">
-        <div class="chat-msg team"><div class="chat-bubble">Hello Rahul! Your false ceiling work for the living room started today. Everything is going as per plan. 🎉</div><div class="chat-time">Today, 10:30 AM · AARAV Team</div></div>
-        <div class="chat-msg team"><div class="chat-bubble">We've uploaded site photos for your review. Please check the Designs tab.</div><div class="chat-time">Today, 10:31 AM · AARAV Team</div></div>
-        <div class="chat-msg self"><div class="chat-bubble">Looks great! Can we upgrade the kitchen tiles to Italian marble?</div><div class="chat-time">Today, 11:00 AM · You</div></div>
-        <div class="chat-msg team"><div class="chat-bubble">Absolutely, we'll prepare a revised quote for the tile upgrade and share it by today evening.</div><div class="chat-time">Today, 11:08 AM · AARAV Team</div></div>
-      </div>
-      <div class="chat-input-wrap">
-        <input type="text" class="form-input chat-input" id="chatInput" placeholder="Type your message..." />
-        <button class="btn btn-gold chat-send" onclick="sendChat()">Send</button>
+    <div class="dash-card mt-3">
+      <div class="dash-card-header"><h3 class="dash-card-title">My Queries</h3></div>
+      <div class="dash-card-body" style="padding:0">
+        <table class="pay-table">
+          <thead><tr><th>Date</th><th>Message</th><th>Status</th></tr></thead>
+          <tbody id="myQueriesBody"><tr><td colspan="3" style="text-align:center;color:var(--text-muted);padding:2rem">No queries yet</td></tr></tbody>
+        </table>
       </div>
     </div>
   </div>
