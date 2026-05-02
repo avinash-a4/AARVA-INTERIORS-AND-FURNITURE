@@ -29,11 +29,29 @@ router.get('/projects', async (req, res) => {
 
 // POST /api/admin/projects
 router.post('/projects', async (req, res) => {
-  const { title, clientId, package: pkg, location, startDate, endDate, totalCost } = req.body;
-  const project = await Project.create({ title, clientId, package: pkg, location, startDate, endDate, totalCost });
-  // Link to client
-  await User.findByIdAndUpdate(clientId, { projectId: project._id });
-  res.status(201).json(project);
+  try {
+    const { title, clientId, package: pkg, location, startDate, endDate, totalCost } = req.body;
+    const project = await Project.create({
+      title,
+      clientId,
+      package:       pkg      || 'Standard',
+      location:      location || '',
+      startDate:     startDate || null,
+      endDate:       endDate   || null,
+      totalCost:     Number(totalCost) || 0,
+      // Strict zero-state defaults — never inherit demo data
+      progress:      0,
+      amountPaid:    0,
+      designs:       [],
+      timeline:      [],
+      recentUpdates: [],
+    });
+    // Link to client
+    await User.findByIdAndUpdate(clientId, { projectId: project._id });
+    res.status(201).json(project);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
 
 // PUT /api/admin/projects/:id

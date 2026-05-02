@@ -66,6 +66,12 @@ function renderOverview(project) {
   const amountPaid  = project.amountPaid  ?? 0;
   const balance     = Math.max(0, totalCost - amountPaid);
 
+  // ── Clear all static demo containers on every render ──
+  ['overviewPhases','activityList','timelineList','designGrid'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = '';
+  });
+
   // ── Stat cards (Overview) ──
   const progCard = document.querySelector('.stat-card:nth-child(1) .stat-card-val');
   if (progCard) progCard.textContent = progressVal + '%';
@@ -74,12 +80,17 @@ function renderOverview(project) {
   if (costCard) costCard.textContent = '₹ ' + formatINR(amountPaid);
 
   // Days left from endDate
-  const daysCard = document.querySelector('.stat-card:nth-child(3) .stat-card-val');
-  if (daysCard && project.endDate) {
-    const diff = Math.ceil((new Date(project.endDate) - new Date()) / (1000 * 60 * 60 * 24));
-    daysCard.textContent = diff > 0 ? diff + ' days' : 'Completed';
-    const label = document.querySelector('.stat-card:nth-child(3) .stat-card-label');
-    if (label) label.textContent = diff > 0 ? 'Days Left' : 'Status';
+  const daysCard  = document.querySelector('.stat-card:nth-child(3) .stat-card-val');
+  const daysLabel = document.querySelector('.stat-card:nth-child(3) .stat-card-label');
+  if (daysCard) {
+    if (!project.endDate) {
+      daysCard.textContent  = 'Not set';
+      if (daysLabel) daysLabel.textContent = 'Est. Completion';
+    } else {
+      const diff = Math.ceil((new Date(project.endDate) - new Date()) / (1000 * 60 * 60 * 24));
+      daysCard.textContent  = diff > 0 ? diff + ' days' : 'Completed';
+      if (daysLabel) daysLabel.textContent = diff > 0 ? 'Days Left' : 'Status';
+    }
   }
 
   // ── Project card header ──
@@ -112,10 +123,8 @@ function renderOverview(project) {
   const barLabel = document.querySelector('.progress-labels .text-gold');
   if (barLabel) barLabel.textContent = progressVal + '%';
 
-  // ── Timeline phases ──
-  if (Array.isArray(project.timeline) && project.timeline.length > 0) {
-    renderTimeline(project.timeline);
-  }
+  // ── Timeline phases (mini overview) ──
+  renderOverviewPhases(project.timeline || []);
 
   // ── Designs ──
   renderDesigns(Array.isArray(project.designs) ? project.designs : []);
@@ -132,10 +141,49 @@ function renderOverview(project) {
   if (balanceEl) balanceEl.textContent = '₹ ' + formatINR(balance);
 }
 
+// ── OVERVIEW PHASE PILLS ───────────────────────────────────────
+function renderOverviewPhases(timeline) {
+  const container = document.getElementById('overviewPhases');
+  if (!container) return;
+  container.innerHTML = '';
+
+  if (!timeline.length) {
+    container.innerHTML = '<p style="color:var(--text-muted);font-size:0.8rem;margin-top:0.5rem">Timeline will appear once the project begins.</p>';
+    return;
+  }
+
+  timeline.forEach(entry => {
+    const cls = entry.status === 'done'        ? 'done'
+              : entry.status === 'in-progress' ? 'active'
+              : '';
+    const dotCls = entry.status === 'done'        ? 'done-dot'
+                 : entry.status === 'in-progress' ? 'active-dot'
+                 : '';
+    const label  = entry.status === 'done'        ? 'Done'
+                 : entry.status === 'in-progress' ? 'In Progress'
+                 : 'Upcoming';
+    container.insertAdjacentHTML('beforeend', `
+      <div class="phase ${cls}">
+        <span class="phase-dot ${dotCls}"></span>
+        <span>${entry.phase}</span>
+        <span class="phase-date">${label}</span>
+      </div>`);
+  });
+}
+
 function renderTimeline(timeline) {
-  const list = document.querySelector('#panel-timeline .timeline-list');
+  const list = document.getElementById('timelineList') || document.querySelector('#panel-timeline .timeline-list');
   if (!list) return;
   list.innerHTML = '';
+
+  if (!timeline.length) {
+    list.innerHTML = `
+      <div style="text-align:center;padding:3rem 1rem">
+        <div style="font-size:2.5rem;margin-bottom:1rem">📋</div>
+        <div style="color:var(--text-muted);font-size:0.875rem">Project timeline not started yet.<br>The AARAV team will update milestones here as work progresses.</div>
+      </div>`;
+    return;
+  }
   timeline.forEach(entry => {
     const cls = entry.status === 'done' ? 'done-tl'
               : entry.status === 'in-progress' ? 'active-tl'
@@ -165,11 +213,15 @@ function renderTimeline(timeline) {
 
 // ── RECENT UPDATES ──────────────────────────────────────────────
 function renderRecentUpdates(updates) {
-  const list = document.querySelector('#panel-overview .activity-list');
+  const list = document.getElementById('activityList') || document.querySelector('#panel-overview .activity-list');
   if (!list) return;
-  if (!updates.length) return;
-
   list.innerHTML = '';
+
+  if (!updates.length) {
+    list.innerHTML = '<p style="color:var(--text-muted);font-size:0.85rem;padding:0.5rem 0">No updates yet. Check back once your project begins.</p>';
+    return;
+  }
+
   updates.slice(0, 6).forEach((upd, i) => {
     const dateStr = upd.date
       ? new Date(upd.date).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' })
@@ -187,7 +239,7 @@ function renderRecentUpdates(updates) {
 
 // ── DESIGNS ──────────────────────────────────────────────
 function renderDesigns(designs) {
-  const grid = document.querySelector('#panel-designs .design-grid');
+  const grid = document.getElementById('designGrid') || document.querySelector('#panel-designs .design-grid');
   if (!grid) return;
 
   // Update pending-review badge in the panel header

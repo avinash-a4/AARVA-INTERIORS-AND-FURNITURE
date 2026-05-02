@@ -123,9 +123,9 @@
         <div class="progress-track">
           <div class="progress-labels">
             <span class="label-text">Overall Progress</span>
-            <span class="text-gold" style="font-family:var(--font-display);font-size:1.1rem;font-weight:600;">72%</span>
+            <span class="text-gold" style="font-family:var(--font-display);font-size:1.1rem;font-weight:600;">0%</span>
           </div>
-          <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:72%"></div></div>
+          <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:0%"></div></div>
         </div>
         <div class="project-phases mt-4">
           <div class="phase done"><span class="phase-dot done-dot"></span><span>Design & Approval</span><span class="phase-date">Done</span></div>
@@ -141,12 +141,7 @@
     <div class="dash-card mt-3">
       <div class="dash-card-header"><h3 class="dash-card-title">Recent Updates</h3></div>
       <div class="dash-card-body">
-        <div class="activity-list">
-          <div class="activity-item"><div class="activity-dot gold"></div><div><div class="activity-msg">Wardrobe carpenter work started in master bedroom</div><div class="activity-time">Today, 10:30 AM</div></div></div>
-          <div class="activity-item"><div class="activity-dot gold"></div><div><div class="activity-msg">Kitchen tiles installed — photos uploaded to gallery</div><div class="activity-time">Yesterday, 3:15 PM</div></div></div>
-          <div class="activity-item"><div class="activity-dot"></div><div><div class="activity-msg">Payment of ₹ 2L received for Phase 2</div><div class="activity-time">Apr 20, 2026</div></div></div>
-          <div class="activity-item"><div class="activity-dot"></div><div><div class="activity-msg">3D design approved by client</div><div class="activity-time">Apr 15, 2026</div></div></div>
-        </div>
+        <div class="activity-list" id="activityList"></div>
       </div>
     </div>
   </div>
@@ -156,38 +151,7 @@
     <div class="dash-card">
       <div class="dash-card-header"><h3 class="dash-card-title">Your Design Files</h3><span class="status-badge status-active">2 Pending Review</span></div>
       <div class="dash-card-body">
-        <div class="design-grid">
-          <div class="design-card">
-            <div class="design-thumb"><img src="assets/images/living.png" alt="Living Room 3D" /><div class="design-type">3D Render</div></div>
-            <div class="design-info">
-              <div class="design-name">Living Room – Final 3D</div>
-              <div class="design-date">Apr 18, 2026</div>
-              <div class="design-actions">
-                <button class="btn btn-gold" style="padding:0.5rem 1rem;font-size:0.72rem" onclick="showToast('✓ Design Approved!','success')">Approve</button>
-                <button class="btn btn-ghost" style="padding:0.5rem 1rem;font-size:0.72rem" onclick="showToast('Change request sent ','gold')">Request Changes</button>
-              </div>
-            </div>
-          </div>
-          <div class="design-card">
-            <div class="design-thumb"><img src="assets/images/kitchen.png" alt="Kitchen 3D" /><div class="design-type">3D Render</div></div>
-            <div class="design-info">
-              <div class="design-name">Modular Kitchen – Final 3D</div>
-              <div class="design-date">Apr 16, 2026</div>
-              <div class="design-actions">
-                <button class="btn btn-gold" style="padding:0.5rem 1rem;font-size:0.72rem" onclick="showToast('✓ Design Approved!','success')">Approve</button>
-                <button class="btn btn-ghost" style="padding:0.5rem 1rem;font-size:0.72rem" onclick="showToast('Change request sent','gold')">Request Changes</button>
-              </div>
-            </div>
-          </div>
-          <div class="design-card design-card--done">
-            <div class="design-thumb"><img src="assets/images/bedroom.png" alt="Bedroom 3D" /><div class="design-type">2D Floor Plan</div></div>
-            <div class="design-info">
-              <div class="design-name">Master Bedroom – Floor Plan</div>
-              <div class="design-date">Apr 10, 2026</div>
-              <span class="status-badge status-done" style="margin-top:0.5rem;display:inline-block">✓ Approved</span>
-            </div>
-          </div>
-        </div>
+        <div class="design-grid" id="designGrid"></div>
       </div>
     </div>
   </div>
@@ -197,7 +161,7 @@
     <div class="dash-card">
       <div class="dash-card-header"><h3 class="dash-card-title">Project Timeline</h3></div>
       <div class="dash-card-body">
-        <div class="timeline-list">
+        <div class="timeline-list" id="timelineList">
           <div class="tl-item done-tl">
             <div class="tl-dot done-dot"></div>
             <div class="tl-content">
