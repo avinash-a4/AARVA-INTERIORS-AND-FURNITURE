@@ -71,6 +71,7 @@ router.post('/register', async (req, res) => {
     // ── SEND WELCOME EMAIL ───────────────────────────────────────
     const loginUrl = process.env.FRONTEND_URL || 'http://localhost:5500/login.html';
     try {
+      console.log('Sending email to:', email);
       await transporter.sendMail({
         from:    `"AARAV Interiors" <${process.env.EMAIL_USER}>`,
         to:      email,
@@ -96,11 +97,14 @@ router.post('/register', async (req, res) => {
       });
       console.log(`✓ Welcome email sent to ${email}`);
     } catch (mailErr) {
-      console.error(`✗ Failed to send welcome email to ${email}:`, mailErr.message);
+      console.error('EMAIL ERROR FULL:', mailErr);
     }
 
     res.status(201).json({ message: 'Client created', id: user._id });
   } catch (err) {
+    if (err.code === 11000) {
+      return res.status(400).json({ message: 'Email already exists' });
+    }
     res.status(500).json({ message: err.message });
   }
 });

@@ -330,15 +330,20 @@ async function createClient(e) {
   const phone    = document.getElementById('nc_phone').value.trim();
   const password = document.getElementById('nc_pass')?.value?.trim() ?? '';
 
+  const btn = e.target.querySelector('button[type="submit"]');
+  if (btn) { btn.disabled = true; btn.innerText = 'Creating...'; }
+
   try {
     await API.post('/auth/register', { name, email, password, phone });
-    showToast(`✓ Client "${name}" created successfully!`, 'success');
+    showToast(`\u2713 Client "${name}" created successfully!`, 'success');
     toggleModal('createClientModal');
     e.target.reset();
     loadClients();
   } catch (err) {
     if (err.message?.includes('401')) { Auth.logout(); return; }
-    showToast(`✗ ${err.message || 'Failed to create client'}`, 'error');
+    showToast(`\u2717 ${err.message || 'Failed to create client'}`, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerText = 'Create Client Account'; }
   }
 }
 
