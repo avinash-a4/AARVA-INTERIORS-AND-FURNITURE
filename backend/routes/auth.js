@@ -8,11 +8,14 @@ const { protect, adminOnly } = require('../middleware/auth');
 
 // ── MAIL TRANSPORTER ──────────────────────────────────────────
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host:   'smtp.gmail.com',
+  port:    465,
+  secure:  true,            // TLS on port 465
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
   },
+  tls: { rejectUnauthorized: false },
 });
 
 const signToken = (user) => jwt.sign(
@@ -60,28 +63,40 @@ router.post('/register', async (req, res) => {
 
     // Accept password or temporaryPassword from frontend, else auto-generate
     const rawPassword = req.body.password || req.body.temporaryPassword || crypto.randomBytes(4).toString('hex');
-    console.log('Generated password:', rawPassword); // temp debug log
+    console.log('Generated password:', rawPassword);
 
     // Let mongoose pre('save') handle bcrypt hashing — do NOT hash manually
     const user = await User.create({ name, email, password: rawPassword, phone, role: req.body.role || 'client' });
 
-    // Send the EXACT same rawPassword — never touch it after this point
+    // ── SEND WELCOME EMAIL ───────────────────────────────────────
+    const loginUrl = process.env.FRONTEND_URL || 'http://localhost:5500/login.html';
     try {
       await transporter.sendMail({
-        from: process.env.EMAIL_USER,
-        to: email,
-        subject: 'Your Aarav Interiors Login Credentials',
+        from:    `"AARAV Interiors" <${process.env.EMAIL_USER}>`,
+        to:      email,
+        subject: 'Aarav Interiors — Your Account Details',
         html: `
-          <h2>Welcome to AARAV Interiors</h2>
-          <p>Your account has been created successfully.</p>
-          <p><strong>Email:</strong> ${email}</p>
-          <p><strong>Password:</strong> ${rawPassword}</p>
-          <p>Please login and change your password after your first sign-in.</p>
-        `,
+          <div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#1a1a1a">
+            <h2 style="color:#C6A969">AARAV Interiors</h2>
+            <p>Hello <strong>${name}</strong>,</p>
+            <p>Your account has been created. Here are your login details:</p>
+            <table style="border-collapse:collapse;margin:1rem 0;background:#f9f9f9;border-radius:6px;width:100%">
+              <tr><td style="padding:10px 16px;color:#555;width:120px">Email</td><td style="padding:10px 16px"><strong>${email}</strong></td></tr>
+              <tr><td style="padding:10px 16px;color:#555">Password</td><td style="padding:10px 16px"><strong>${rawPassword}</strong></td></tr>
+            </table>
+            <a href="${loginUrl}"
+              style="display:inline-block;padding:12px 28px;background:#C6A969;color:#fff;
+                     text-decoration:none;border-radius:6px;font-weight:bold;margin:0.5rem 0">
+              Login to Your Dashboard
+            </a>
+            <p style="margin-top:1.5rem;color:#555;font-size:0.875rem">Please keep your credentials safe.</p>
+            <hr style="border:none;border-top:1px solid #eee;margin:1.5rem 0" />
+            <p style="color:#999;font-size:0.8rem">&mdash; AARAV Interiors &nbsp;&bull;&nbsp; Luxury Interior Designers</p>
+          </div>`,
       });
+      console.log(`✓ Welcome email sent to ${email}`);
     } catch (mailErr) {
-      // Log mail failure but do NOT block the response
-      console.error('Failed to send welcome email:', mailErr.message);
+      console.error(`✗ Failed to send welcome email to ${email}:`, mailErr.message);
     }
 
     res.status(201).json({ message: 'Client created', id: user._id });

@@ -48,6 +48,7 @@ async function loadClients() {
     tableBody.innerHTML = '';
     clients.forEach(client => {
       const hasProject = !!client.projectId;
+      const startDate  = client.projectId?.startDate || null;
       const row = document.createElement('tr');
       row.innerHTML = `
         <td>${client.name}</td>
@@ -55,8 +56,12 @@ async function loadClients() {
         <td>${client.phone || '-'}</td>
         <td>${client.projectId?.title || '—'}</td>
         <td><span class="status-badge ${hasProject ? 'status-active' : ''}">${hasProject ? 'Active' : 'No Project'}</span></td>
-        <td><button class="btn btn-ghost" style="padding:0.3rem 0.75rem;font-size:0.68rem;color:#ff6b6b;border-color:#ff6b6b"
-          onclick="deleteClient('${client._id}')">Delete</button></td>
+        <td style="display:flex;gap:0.4rem;flex-wrap:wrap">
+          <button class="btn btn-outline" style="padding:0.3rem 0.75rem;font-size:0.68rem"
+            onclick="openClientCalendar('${client.name}', '${startDate || ''}')">View</button>
+          <button class="btn btn-ghost" style="padding:0.3rem 0.75rem;font-size:0.68rem;color:#ff6b6b;border-color:#ff6b6b"
+            onclick="deleteClient('${client._id}')">Delete</button>
+        </td>
       `;
       tableBody.appendChild(row);
     });
@@ -64,6 +69,149 @@ async function loadClients() {
     console.error('Error loading clients:', error);
   }
 }
+
+// ── CLIENT CALENDAR MODAL ──────────────────────────────────────
+const WORKFLOW = [
+  { day: 1,  label: 'Ceiling Work (Framing)',    group: 1 },
+  { day: 2,  label: 'Ceiling Work (Framing)',    group: 1 },
+  { day: 3,  label: 'Procure Wires',             group: 2 },
+  { day: 4,  label: 'Procure Wires',             group: 2 },
+  { day: 5,  label: 'Sheet Fixing',              group: 3 },
+  { day: 6,  label: 'Sheet Fixing',              group: 3 },
+  { day: 7,  label: 'Finishing & Cleaning',      group: 4 },
+  { day: 8,  label: 'Putty & Paint',             group: 5 },
+  { day: 9,  label: 'Putty & Paint',             group: 5 },
+  { day: 10, label: 'Putty & Paint',             group: 5 },
+  { day: 11, label: 'Main Interior Work Start',  group: 6 },
+];
+
+const GROUP_COLORS = {
+  1: { bg: 'rgba(198,169,105,0.18)', border: '#C6A969',  dot: '#C6A969'  },
+  2: { bg: 'rgba(100,180,255,0.15)', border: '#64B4FF',  dot: '#64B4FF'  },
+  3: { bg: 'rgba(120,200,140,0.15)', border: '#78C88C',  dot: '#78C88C'  },
+  4: { bg: 'rgba(255,160,80,0.15)',  border: '#FFA050',  dot: '#FFA050'  },
+  5: { bg: 'rgba(200,100,230,0.15)', border: '#C864E6',  dot: '#C864E6'  },
+  6: { bg: 'rgba(80,220,200,0.15)',  border: '#50DCC8',  dot: '#50DCC8'  },
+};
+
+function openClientCalendar(clientName, startDateStr) {
+  // Calculate reference date
+  const start = startDateStr ? new Date(startDateStr) : new Date();
+  start.setHours(0, 0, 0, 0);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+
+  // Build day blocks HTML
+  const blocksHTML = WORKFLOW.map(entry => {
+    const dayDate  = new Date(start);
+    dayDate.setDate(dayDate.getDate() + entry.day - 1);
+
+    const diffMs   = dayDate - today;
+    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+    let statusLabel, statusStyle;
+    if (diffDays < 0) {
+      statusLabel = 'Done';
+      statusStyle = 'color:#4CAF50;font-size:0.62rem;font-weight:600';
+    } else if (diffDays === 0) {
+      statusLabel = 'Today';
+      statusStyle = 'color:#C6A969;font-size:0.62rem;font-weight:700';
+    } else {
+      statusLabel = `${diffDays}d left`;
+      statusStyle = 'color:var(--text-muted);font-size:0.62rem';
+    }
+
+    const col    = GROUP_COLORS[entry.group];
+    const isPast = diffDays < 0;
+    const isToday = diffDays === 0;
+
+    return `
+      <div class="cal-block" title="${entry.label}" style="
+        background:${col.bg};
+        border:1.5px solid ${col.border};
+        border-radius:10px;
+        padding:0.6rem 0.5rem;
+        min-width:72px;
+        max-width:80px;
+        flex-shrink:0;
+        text-align:center;
+        position:relative;
+        opacity:${isPast ? '0.6' : '1'};
+        box-shadow:${isToday ? '0 0 12px ' + col.border + '55' : 'none'};
+        transition:transform 0.2s,box-shadow 0.2s;
+        cursor:default;
+      ">
+        <div style="font-size:0.65rem;color:${col.dot};font-weight:700;letter-spacing:0.06em;margin-bottom:0.25rem">DAY ${entry.day}</div>
+        <div style="width:8px;height:8px;background:${col.dot};border-radius:50%;margin:0 auto 0.35rem"></div>
+        <div style="font-size:0.68rem;color:var(--text-primary);font-weight:500;line-height:1.3">${entry.label}</div>
+        <div style="${statusStyle};margin-top:0.35rem">${statusLabel}</div>
+        ${isToday ? `<div style="position:absolute;top:-7px;left:50%;transform:translateX(-50%);background:${col.dot};color:#0a0b14;font-size:0.55rem;font-weight:800;padding:2px 6px;border-radius:20px">TODAY</div>` : ''}
+      </div>`;
+  }).join('');
+
+  // Legend
+  const legendItems = [
+    { label: 'Ceiling Work',          col: GROUP_COLORS[1] },
+    { label: 'Procure Wires',         col: GROUP_COLORS[2] },
+    { label: 'Sheet Fixing',          col: GROUP_COLORS[3] },
+    { label: 'Finishing & Cleaning',  col: GROUP_COLORS[4] },
+    { label: 'Putty & Paint',         col: GROUP_COLORS[5] },
+    { label: 'Interior Work Start',   col: GROUP_COLORS[6] },
+  ].map(l => `
+    <div style="display:flex;align-items:center;gap:0.4rem;font-size:0.7rem;color:var(--text-muted)">
+      <div style="width:10px;height:10px;border-radius:50%;background:${l.col.dot};flex-shrink:0"></div>
+      ${l.label}
+    </div>`).join('');
+
+  const dateLabel = startDateStr
+    ? `Start: ${new Date(startDateStr).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' })}`
+    : 'Start: Today (estimated)';
+
+  // Remove existing modal if present
+  document.getElementById('clientCalendarModal')?.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'clientCalendarModal';
+  modal.className = 'admin-modal';
+  modal.innerHTML = `
+    <div class="modal-backdrop" onclick="document.getElementById('clientCalendarModal').remove()"></div>
+    <div class="modal-box" style="max-width:720px;width:95vw">
+      <div class="modal-header">
+        <div>
+          <h3 style="margin:0">${clientName} — Project Timeline</h3>
+          <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.2rem">${dateLabel} &nbsp;·&nbsp; 11-Day Workflow</div>
+        </div>
+        <button onclick="document.getElementById('clientCalendarModal').remove()">✕</button>
+      </div>
+      <div style="padding:1.25rem 1.5rem">
+        <!-- Scrollable day track -->
+        <div style="display:flex;gap:0.6rem;overflow-x:auto;padding-bottom:0.75rem;scrollbar-width:thin">
+          ${blocksHTML}
+        </div>
+        <!-- Connector line -->
+        <div style="position:relative;margin:0.5rem 0 1rem">
+          <div style="height:2px;background:linear-gradient(90deg,#C6A969,#50DCC8);border-radius:2px;opacity:0.3"></div>
+        </div>
+        <!-- Legend -->
+        <div style="display:flex;flex-wrap:wrap;gap:0.75rem 1.5rem;margin-top:0.25rem">
+          ${legendItems}
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+
+  // Hover effects via JS (CSS not available inline)
+  modal.querySelectorAll('.cal-block').forEach(el => {
+    el.addEventListener('mouseenter', () => {
+      el.style.transform = 'translateY(-4px)';
+      el.style.boxShadow = '0 8px 24px rgba(0,0,0,0.25)';
+    });
+    el.addEventListener('mouseleave', () => {
+      el.style.transform = '';
+      el.style.boxShadow = el.style.boxShadow.includes('12px') ? el.style.boxShadow : 'none';
+    });
+  });
+}
+
 
 // ── POPULATE CLIENT DROPDOWN (for Create Project modal) ─────────
 async function populateClientDropdown() {
