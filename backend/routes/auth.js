@@ -61,9 +61,9 @@ router.post('/register', async (req, res) => {
 
     // ── SEND WELCOME EMAIL via Resend (fire-and-forget) ───────────────
     const loginUrl = process.env.FRONTEND_URL || 'http://localhost:5500/login.html';
-    console.log('Sending email to:', email);
+    console.log('Sending email from support@aaravorganisations.com to:', email);
     resend.emails.send({
-      from:    'Aarav Interiors <onboarding@resend.dev>',
+      from:    'Aarav Interiors <support@aaravorganisations.com>',
       to:      email,
       subject: 'Aarav Interiors — Your Account Details',
       html: `
