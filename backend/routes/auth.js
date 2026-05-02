@@ -2,21 +2,12 @@ const express      = require('express');
 const router       = express.Router();
 const jwt          = require('jsonwebtoken');
 const crypto       = require('crypto');
-const nodemailer   = require('nodemailer');
+const { Resend }   = require('resend');
 const User         = require('../models/User');
 const { protect, adminOnly } = require('../middleware/auth');
 
-// ── MAIL TRANSPORTER ──────────────────────────────────────────
-const transporter = nodemailer.createTransport({
-  host:   'smtp.gmail.com',
-  port:    465,
-  secure:  true,            // TLS on port 465
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-  tls: { rejectUnauthorized: false },
-});
+// ── RESEND CLIENT ─────────────────────────────────────────────
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 const signToken = (user) => jwt.sign(
   { id: user._id, email: user.email, role: user.role, name: user.name },
@@ -68,11 +59,11 @@ router.post('/register', async (req, res) => {
     // Let mongoose pre('save') handle bcrypt hashing — do NOT hash manually
     const user = await User.create({ name, email, password: rawPassword, phone, role: req.body.role || 'client' });
 
-    // ── SEND WELCOME EMAIL (fire-and-forget — does NOT block response) ──
+    // ── SEND WELCOME EMAIL via Resend (fire-and-forget) ───────────────
     const loginUrl = process.env.FRONTEND_URL || 'http://localhost:5500/login.html';
     console.log('Sending email to:', email);
-    transporter.sendMail({
-      from:    `"AARAV Interiors" <${process.env.EMAIL_USER}>`,
+    resend.emails.send({
+      from:    'Aarav Interiors <onboarding@resend.dev>',
       to:      email,
       subject: 'Aarav Interiors — Your Account Details',
       html: `
@@ -94,7 +85,7 @@ router.post('/register', async (req, res) => {
           <p style="color:#999;font-size:0.8rem">&mdash; AARAV Interiors &nbsp;&bull;&nbsp; Luxury Interior Designers</p>
         </div>`,
     })
-    .then(() => console.log('✓ Email sent to', email))
+    .then(() => console.log('✓ Email sent via Resend to', email))
     .catch(err => console.error('EMAIL ERROR:', err));
 
     res.status(201).json({ message: 'Client created', id: user._id });
