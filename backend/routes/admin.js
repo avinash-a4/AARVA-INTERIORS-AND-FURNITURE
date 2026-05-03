@@ -82,13 +82,15 @@ router.put('/projects/:id', async (req, res) => {
   }
 });
 
-// DELETE /api/admin/clients/:id  (cascade-deletes linked project)
+// DELETE /api/admin/clients/:id  (cascade-deletes linked project + its queries)
 router.delete('/clients/:id', async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ message: 'Client not found' });
 
     if (user.projectId) {
+      // Delete queries tied to this project before deleting the project
+      await Query.deleteMany({ projectId: user.projectId });
       await Project.findByIdAndDelete(user.projectId);
     }
 
@@ -99,14 +101,21 @@ router.delete('/clients/:id', async (req, res) => {
   }
 });
 
-// DELETE /api/admin/projects/:id  (clears projectId on linked client)
+// DELETE /api/admin/projects/:id  (clears projectId on linked client, deletes related queries)
 router.delete('/projects/:id', async (req, res) => {
   try {
     const project = await Project.findById(req.params.id);
     if (!project) return res.status(404).json({ message: 'Project not found' });
 
+    // 1. Delete all queries tied to this project (hard delete — orphan queries serve no purpose)
+    await Query.deleteMany({ projectId: req.params.id });
+
+    // 2. Unlink the project from the client (DO NOT delete payments — financial record must be preserved)
     await User.findByIdAndUpdate(project.clientId, { $unset: { projectId: '' } });
+
+    // 3. Delete the project
     await Project.findByIdAndDelete(req.params.id);
+
     res.json({ message: 'Project deleted successfully' });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -227,10 +236,80 @@ router.post('/projects/:id/designs/upload', upload.single('file'), async (req, r
 });
 
 // GET /api/admin/payments
+// Payments are NEVER deleted when a project is removed (financial audit trail).
+// Strategy: single aggregation pipeline — $lookup joins projects/users inline,
+// $match { project: { $ne: [] } } eliminates orphan payments at the DB engine
+// level (no $in array, no in-memory filtering, scales to 100k+ records).
 router.get('/payments', async (req, res) => {
-  const payments = await Payment.find().populate('clientId', 'name').populate('projectId', 'title')
-    .sort('-createdAt');
-  res.json(payments);
+  try {
+    const payments = await Payment.aggregate([
+      // ── Step 1: join with projects collection ──────────────────────────────
+      {
+        $lookup: {
+          from: 'projects',
+          let: { pid: '$projectId' },
+          pipeline: [
+            { $match: { $expr: { $eq: ['$_id', '$$pid'] } } },
+            { $project: { _id: 1, title: 1 } }
+          ],
+          as: 'project'
+        },
+      },
+      // ── Step 2: discard payments whose project no longer exists ────────────
+      // "project.0" $exists is faster than $ne:[] — direct element existence
+      // check, no array comparison, MongoDB-optimized for $lookup results.
+      {
+        $match: { 'project.0': { $exists: true } },
+      },
+      // ── Step 3: join with users collection for client name ─────────────────
+      {
+        $lookup: {
+          from: 'users',
+          let: { cid: '$clientId' },
+          pipeline: [
+            { $match: { $expr: { $eq: ['$_id', '$$cid'] } } },
+            { $project: { _id: 1, name: 1 } }
+          ],
+          as: 'client'
+        },
+      },
+      // ── Step 4: reshape to match Mongoose populate response structure ──────
+      // projectId: { _id, title }  |  clientId: { _id, name }
+      {
+        $addFields: {
+          projectId: { $arrayElemAt: ['$project', 0] },
+          clientId:  { $arrayElemAt: ['$client',  0] },
+        },
+      },
+      {
+        $project: {
+          // Payment fields
+          amount:      1,
+          mode:        1,
+          description: 1,
+          status:      1,
+          paidAt:      1,
+          dueDate:     1,
+          invoiceUrl:  1,
+          createdAt:   1,
+          // Shaped relations — only expose what the frontend needs
+          'projectId._id':   1,
+          'projectId.title': 1,
+          'clientId._id':    1,
+          'clientId.name':   1,
+          // Drop the raw lookup arrays
+          project: 0,
+          client:  0,
+        },
+      },
+      // ── Step 5: sort newest first ──────────────────────────────────────────
+      { $sort: { createdAt: -1 } },
+    ]);
+
+    res.json(payments);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
 
 // POST /api/admin/payments  — records payment + increments project.amountPaid
@@ -274,12 +353,16 @@ router.put('/payments/:id/mark-paid', async (req, res) => {
 });
 
 // GET /api/admin/queries
+// Queries are hard-deleted on project delete; this filter is a safety net for any legacy orphans.
 router.get('/queries', async (req, res) => {
   const queries = await Query.find()
     .populate('clientId', 'name email')
-    .populate('projectId', 'title')
+    .populate('projectId', 'title')  // resolves to null if project was deleted
     .sort('-createdAt');
-  res.json(queries);
+
+  // Strip any orphaned queries whose project no longer exists
+  const filtered = queries.filter(q => q.projectId !== null);
+  res.json(filtered);
 });
 
 // PATCH /api/admin/queries/:id/resolve
