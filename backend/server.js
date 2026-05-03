@@ -22,6 +22,7 @@ app.use('/api/auth',      require('./routes/auth'));
 app.use('/api/admin',     require('./routes/admin'));
 app.use('/api/client',    require('./routes/client'));
 app.use('/api/estimator', require('./routes/estimator'));
+app.use('/api/contact',   require('./routes/contact'));
 
 // ✅ Simple root route (IMPORTANT)
 app.get('/', (req, res) => {
