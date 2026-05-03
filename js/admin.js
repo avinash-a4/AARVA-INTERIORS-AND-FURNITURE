@@ -39,6 +39,9 @@ function toggleModal(id) {
   }
 }
 
+// ── CLIENT DATA CACHE (safe way to pass objects to onclick) ───
+const _clientDataMap = new Map();
+
 // ── LOAD CLIENTS ───────────────────────────────────────────────
 async function loadClients() {
   try {
@@ -48,7 +51,7 @@ async function loadClients() {
     tableBody.innerHTML = '';
     clients.forEach(client => {
       const hasProject = !!client.projectId;
-      const startDate  = client.projectId?.startDate || null;
+      _clientDataMap.set(client._id, client); // cache for safe onclick lookup
       const row = document.createElement('tr');
       row.innerHTML = `
         <td>${client.name}</td>
@@ -58,7 +61,7 @@ async function loadClients() {
         <td><span class="status-badge ${hasProject ? 'status-active' : ''}">${hasProject ? 'Active' : 'No Project'}</span></td>
         <td style="display:flex;gap:0.4rem;flex-wrap:wrap">
           <button class="btn btn-outline" style="padding:0.3rem 0.75rem;font-size:0.68rem"
-            onclick="openClientCalendar('${client.name}', '${startDate || ''}')">View</button>
+            onclick="openClientCalendar(_clientDataMap.get('${client._id}'))">View</button>
           <button class="btn btn-ghost" style="padding:0.3rem 0.75rem;font-size:0.68rem;color:#ff6b6b;border-color:#ff6b6b"
             onclick="deleteClient('${client._id}')">Delete</button>
         </td>
@@ -70,103 +73,212 @@ async function loadClients() {
   }
 }
 
-// ── CLIENT CALENDAR MODAL ──────────────────────────────────────
+// ── CLIENT CALENDAR MODAL (Month View) ──────────────────────────
 const WORKFLOW = [
-  { day: 1,  label: 'Ceiling Work (Framing)',    group: 1 },
-  { day: 2,  label: 'Ceiling Work (Framing)',    group: 1 },
-  { day: 3,  label: 'Procure Wires',             group: 2 },
-  { day: 4,  label: 'Procure Wires',             group: 2 },
-  { day: 5,  label: 'Sheet Fixing',              group: 3 },
-  { day: 6,  label: 'Sheet Fixing',              group: 3 },
-  { day: 7,  label: 'Finishing & Cleaning',      group: 4 },
-  { day: 8,  label: 'Putty & Paint',             group: 5 },
-  { day: 9,  label: 'Putty & Paint',             group: 5 },
-  { day: 10, label: 'Putty & Paint',             group: 5 },
-  { day: 11, label: 'Main Interior Work Start',  group: 6 },
+  { day: 1,  label: 'Ceiling Work',     short: 'Ceiling',   group: 1 },
+  { day: 2,  label: 'Ceiling Work',     short: 'Ceiling',   group: 1 },
+  { day: 3,  label: 'Procure Wires',    short: 'Wiring',    group: 2 },
+  { day: 4,  label: 'Procure Wires',    short: 'Wiring',    group: 2 },
+  { day: 5,  label: 'Sheet Fixing',     short: 'Sheets',    group: 3 },
+  { day: 6,  label: 'Sheet Fixing',     short: 'Sheets',    group: 3 },
+  { day: 7,  label: 'Finishing & Cleaning', short: 'Finish',group: 4 },
+  { day: 8,  label: 'Putty & Paint',    short: 'Paint',     group: 5 },
+  { day: 9,  label: 'Putty & Paint',    short: 'Paint',     group: 5 },
+  { day: 10, label: 'Putty & Paint',    short: 'Paint',     group: 5 },
+  { day: 11, label: 'Interior Work Start', short: 'Interior',group: 6 },
 ];
 
 const GROUP_COLORS = {
-  1: { bg: 'rgba(198,169,105,0.18)', border: '#C6A969',  dot: '#C6A969'  },
-  2: { bg: 'rgba(100,180,255,0.15)', border: '#64B4FF',  dot: '#64B4FF'  },
-  3: { bg: 'rgba(120,200,140,0.15)', border: '#78C88C',  dot: '#78C88C'  },
-  4: { bg: 'rgba(255,160,80,0.15)',  border: '#FFA050',  dot: '#FFA050'  },
-  5: { bg: 'rgba(200,100,230,0.15)', border: '#C864E6',  dot: '#C864E6'  },
-  6: { bg: 'rgba(80,220,200,0.15)',  border: '#50DCC8',  dot: '#50DCC8'  },
+  1: { dot: '#C6A969', bg: 'rgba(198,169,105,0.22)', border: '#C6A969', glow: 'rgba(198,169,105,0.45)' },
+  2: { dot: '#64B4FF', bg: 'rgba(100,180,255,0.18)', border: '#64B4FF', glow: 'rgba(100,180,255,0.45)' },
+  3: { dot: '#78C88C', bg: 'rgba(120,200,140,0.18)', border: '#78C88C', glow: 'rgba(120,200,140,0.45)' },
+  4: { dot: '#FFA050', bg: 'rgba(255,160,80,0.18)',  border: '#FFA050', glow: 'rgba(255,160,80,0.45)'  },
+  5: { dot: '#C864E6', bg: 'rgba(200,100,230,0.18)', border: '#C864E6', glow: 'rgba(200,100,230,0.45)' },
+  6: { dot: '#50DCC8', bg: 'rgba(80,220,200,0.18)',  border: '#50DCC8', glow: 'rgba(80,220,200,0.45)'  },
 };
 
-function openClientCalendar(clientName, startDateStr) {
-  // Calculate reference date
-  const start = startDateStr ? new Date(startDateStr) : new Date();
+/**
+ * Returns the WORKFLOW entry for a given Date object, or null if no task.
+ * @param {Date} date
+ * @param {Date} startDate – the project start date (Day 1)
+ */
+function getTaskForDate(date, startDate) {
+  // Normalize both to midnight to eliminate DST / time-of-day skew
+  const start = new Date(startDate);
   start.setHours(0, 0, 0, 0);
+  const current = new Date(date);
+  current.setHours(0, 0, 0, 0);
+  // Math.floor guarantees no rounding surprises at day boundaries
+  const diffDays = Math.floor((current - start) / (1000 * 60 * 60 * 24)); // 0-based
+  const dayNum   = diffDays + 1;                                           // 1-based
+  return WORKFLOW.find(w => w.day === dayNum) || null;
+}
+
+/**
+ * Builds the full month calendar HTML string.
+ * @param {Date} refDate      – any date in the target month
+ * @param {Date} projectStart – project.startDate
+ */
+function generateCalendar(refDate, projectStart) {
   const today = new Date(); today.setHours(0, 0, 0, 0);
+  const year  = refDate.getFullYear();
+  const month = refDate.getMonth();
 
-  // Build day blocks HTML
-  const blocksHTML = WORKFLOW.map(entry => {
-    const dayDate  = new Date(start);
-    dayDate.setDate(dayDate.getDate() + entry.day - 1);
+  const firstDay  = new Date(year, month, 1);
+  const lastDay   = new Date(year, month + 1, 0);
+  const startDow  = firstDay.getDay(); // 0=Sun
+  const totalDays = lastDay.getDate();
 
-    const diffMs   = dayDate - today;
-    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const headerHTML = days.map(d =>
+    `<div class="cal-grid-hdr">${d}</div>`
+  ).join('');
 
-    let statusLabel, statusStyle;
-    if (diffDays < 0) {
-      statusLabel = 'Done';
-      statusStyle = 'color:#4CAF50;font-size:0.62rem;font-weight:600';
-    } else if (diffDays === 0) {
-      statusLabel = 'Today';
-      statusStyle = 'color:#C6A969;font-size:0.62rem;font-weight:700';
-    } else {
-      statusLabel = `${diffDays}d left`;
-      statusStyle = 'color:var(--text-muted);font-size:0.62rem';
+  let cells = '';
+  // Empty leading cells
+  for (let i = 0; i < startDow; i++) {
+    cells += `<div class="cal-cell cal-cell--empty"></div>`;
+  }
+
+  for (let d = 1; d <= totalDays; d++) {
+    const cellDate = new Date(year, month, d);
+    cellDate.setHours(0, 0, 0, 0);
+
+    const isToday  = cellDate.getTime() === today.getTime();
+    const isPast   = cellDate < today;
+
+    const task = projectStart ? getTaskForDate(cellDate, projectStart) : null;
+    const col  = task ? GROUP_COLORS[task.group] : null;
+
+    // Tooltip status — use Math.floor to match getTaskForDate's exact arithmetic
+    let tooltipStatus = '';
+    if (task) {
+      const diffDays = Math.floor((cellDate - today) / (1000 * 60 * 60 * 24));
+      if (isToday)           tooltipStatus = 'Today';
+      else if (diffDays < 0) tooltipStatus = 'Completed';
+      else                   tooltipStatus = `${diffDays} day${diffDays !== 1 ? 's' : ''} left`;
     }
 
-    const col    = GROUP_COLORS[entry.group];
-    const isPast = diffDays < 0;
-    const isToday = diffDays === 0;
+    const tooltipAttr = task
+      ? `data-tip="${task.label}|${tooltipStatus}"`
+      : '';
 
-    return `
-      <div class="cal-block" title="${entry.label}" style="
-        background:${col.bg};
-        border:1.5px solid ${col.border};
-        border-radius:10px;
-        padding:0.6rem 0.5rem;
-        min-width:72px;
-        max-width:80px;
-        flex-shrink:0;
-        text-align:center;
-        position:relative;
-        opacity:${isPast ? '0.6' : '1'};
-        box-shadow:${isToday ? '0 0 12px ' + col.border + '55' : 'none'};
-        transition:transform 0.2s,box-shadow 0.2s;
-        cursor:default;
-      ">
-        <div style="font-size:0.65rem;color:${col.dot};font-weight:700;letter-spacing:0.06em;margin-bottom:0.25rem">DAY ${entry.day}</div>
-        <div style="width:8px;height:8px;background:${col.dot};border-radius:50%;margin:0 auto 0.35rem"></div>
-        <div style="font-size:0.68rem;color:var(--text-primary);font-weight:500;line-height:1.3">${entry.label}</div>
-        <div style="${statusStyle};margin-top:0.35rem">${statusLabel}</div>
-        ${isToday ? `<div style="position:absolute;top:-7px;left:50%;transform:translateX(-50%);background:${col.dot};color:#0a0b14;font-size:0.55rem;font-weight:800;padding:2px 6px;border-radius:20px">TODAY</div>` : ''}
+    let dotHTML = '';
+    if (task && col) {
+      dotHTML = `<span class="cal-dot" style="background:${col.dot}"></span><span class="cal-task-label" style="color:${col.dot}">${task.short}</span>`;
+    }
+
+    const todayClass = isToday ? ' cal-cell--today' : '';
+    const pastClass  = isPast  ? ' cal-cell--past'  : '';
+    const taskClass  = task    ? ' cal-cell--task'  : '';
+    const cellStyle  = (task && col && !isPast)
+      ? `style="border-color:${col.border};background:${col.bg};"`
+      : (task && col && isPast)
+        ? `style="border-color:${col.border}44;background:${col.bg.replace('0.18','0.07')};"`
+        : '';
+
+    cells += `
+      <div class="cal-cell${todayClass}${pastClass}${taskClass}" ${cellStyle} ${tooltipAttr}>
+        <span class="cal-num">${d}</span>
+        ${isToday ? '<span class="cal-today-badge">Today</span>' : ''}
+        <div class="cal-cell-body">
+          ${dotHTML}
+        </div>
+        ${task ? `<div class="cal-tooltip"><strong>${task.label}</strong><br><span>${tooltipStatus}</span></div>` : ''}
       </div>`;
-  }).join('');
+  }
+
+  return `
+    <div class="cal-grid-wrap">
+      <div class="cal-grid">
+        ${headerHTML}
+        ${cells}
+      </div>
+    </div>`;
+}
+
+function openClientCalendar(client) {
+  // Guard: client object must exist
+  if (!client) {
+    showToast('✗ Client data not found.', 'error');
+    return;
+  }
+
+  const clientName   = client.name || 'Client';
+
+  // Guard: client must have a linked project with a startDate
+  if (!client.projectId || !client.projectId.startDate) {
+    // Still show a modal — just with a clear "no project" message
+    document.getElementById('clientCalendarModal')?.remove();
+    const modal = document.createElement('div');
+    modal.id = 'clientCalendarModal';
+    modal.className = 'admin-modal';
+    modal.innerHTML = `
+      <div class="modal-backdrop" onclick="document.getElementById('clientCalendarModal').remove()"></div>
+      <div class="cal-modal-box" style="max-width:480px">
+        <div class="cal-modal-header">
+          <div class="cal-modal-title"><h3>${clientName}</h3><span class="cal-modal-sub">Project Timeline</span></div>
+          <button class="cal-close-btn" onclick="document.getElementById('clientCalendarModal').remove()">✕</button>
+        </div>
+        <div class="cal-status-banner cal-status--na" style="margin:1.5rem 1.75rem 2rem">
+          ⚠ No project assigned yet — assign a project with a start date to view the workflow calendar.
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+    return;
+  }
+
+  const startDateStr = client.projectId.startDate;
+
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const projectStart = new Date(startDateStr);
+  projectStart.setHours(0, 0, 0, 0);
+
+  // Decide which month to show: default = current month
+  let viewDate = new Date(); // month reference
+
+  // Workflow edge cases
+  const lastWorkflowDate = projectStart
+    ? new Date(projectStart.getTime() + (WORKFLOW.length - 1) * 86400000)
+    : null;
+
+  let statusBanner = '';
+  if (!projectStart) {
+    statusBanner = `<div class="cal-status-banner cal-status--na">⚠ No project start date set for this client.</div>`;
+  } else if (today < projectStart) {
+    const daysUntil = Math.floor((projectStart - today) / (1000 * 60 * 60 * 24));
+    statusBanner = `<div class="cal-status-banner cal-status--pending">🕐 Project not started yet — starts in <strong>${daysUntil} day${daysUntil !== 1 ? 's' : ''}</strong></div>`;
+  } else if (lastWorkflowDate && today > lastWorkflowDate) {
+    statusBanner = `<div class="cal-status-banner cal-status--done">✅ All workflow phases completed!</div>`;
+  } else if (projectStart) {
+    const currentDay = Math.floor((today - projectStart) / (1000 * 60 * 60 * 24)) + 1;
+    const currentTask = WORKFLOW.find(w => w.day === currentDay);
+    statusBanner = `<div class="cal-status-banner cal-status--active">⚡ Day <strong>${currentDay}</strong> of 11${currentTask ? ` — <em>${currentTask.label}</em>` : ''}</div>`;
+  }
+
+  const dateLabel = startDateStr
+    ? `Starts ${new Date(startDateStr).toLocaleDateString('en-IN', { day:'numeric', month:'long', year:'numeric' })}`
+    : 'No start date';
+
+  const monthName = viewDate.toLocaleDateString('en-IN', { month:'long', year:'numeric' });
+
+  // Calendar HTML
+  const calendarHTML = generateCalendar(viewDate, projectStart);
 
   // Legend
   const legendItems = [
-    { label: 'Ceiling Work',          col: GROUP_COLORS[1] },
-    { label: 'Procure Wires',         col: GROUP_COLORS[2] },
-    { label: 'Sheet Fixing',          col: GROUP_COLORS[3] },
-    { label: 'Finishing & Cleaning',  col: GROUP_COLORS[4] },
-    { label: 'Putty & Paint',         col: GROUP_COLORS[5] },
-    { label: 'Interior Work Start',   col: GROUP_COLORS[6] },
-  ].map(l => `
-    <div style="display:flex;align-items:center;gap:0.4rem;font-size:0.7rem;color:var(--text-muted)">
-      <div style="width:10px;height:10px;border-radius:50%;background:${l.col.dot};flex-shrink:0"></div>
-      ${l.label}
-    </div>`).join('');
+    { label: 'Ceiling Work',       group: 1 },
+    { label: 'Procure Wires',      group: 2 },
+    { label: 'Sheet Fixing',       group: 3 },
+    { label: 'Finishing & Clean',  group: 4 },
+    { label: 'Putty & Paint',      group: 5 },
+    { label: 'Interior Start',     group: 6 },
+  ].map(l => {
+    const c = GROUP_COLORS[l.group];
+    return `<div class="cal-legend-item"><span class="cal-legend-dot" style="background:${c.dot}"></span>${l.label}</div>`;
+  }).join('');
 
-  const dateLabel = startDateStr
-    ? `Start: ${new Date(startDateStr).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' })}`
-    : 'Start: Today (estimated)';
-
-  // Remove existing modal if present
+  // Remove any existing modal
   document.getElementById('clientCalendarModal')?.remove();
 
   const modal = document.createElement('div');
@@ -174,42 +286,35 @@ function openClientCalendar(clientName, startDateStr) {
   modal.className = 'admin-modal';
   modal.innerHTML = `
     <div class="modal-backdrop" onclick="document.getElementById('clientCalendarModal').remove()"></div>
-    <div class="modal-box" style="max-width:720px;width:95vw">
-      <div class="modal-header">
-        <div>
-          <h3 style="margin:0">${clientName} — Project Timeline</h3>
-          <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.2rem">${dateLabel} &nbsp;·&nbsp; 11-Day Workflow</div>
+    <div class="cal-modal-box">
+      <!-- Header -->
+      <div class="cal-modal-header">
+        <div class="cal-modal-title">
+          <h3>${clientName}</h3>
+          <span class="cal-modal-sub">${dateLabel} &nbsp;·&nbsp; 11-Day Workflow</span>
         </div>
-        <button onclick="document.getElementById('clientCalendarModal').remove()">✕</button>
+        <button class="cal-close-btn" onclick="document.getElementById('clientCalendarModal').remove()">✕</button>
       </div>
-      <div style="padding:1.25rem 1.5rem">
-        <!-- Scrollable day track -->
-        <div style="display:flex;gap:0.6rem;overflow-x:auto;padding-bottom:0.75rem;scrollbar-width:thin">
-          ${blocksHTML}
-        </div>
-        <!-- Connector line -->
-        <div style="position:relative;margin:0.5rem 0 1rem">
-          <div style="height:2px;background:linear-gradient(90deg,#C6A969,#50DCC8);border-radius:2px;opacity:0.3"></div>
-        </div>
-        <!-- Legend -->
-        <div style="display:flex;flex-wrap:wrap;gap:0.75rem 1.5rem;margin-top:0.25rem">
-          ${legendItems}
-        </div>
+
+      <!-- Status banner -->
+      ${statusBanner}
+
+      <!-- Month heading -->
+      <div class="cal-month-heading">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        ${monthName}
+      </div>
+
+      <!-- Calendar grid -->
+      ${calendarHTML}
+
+      <!-- Legend -->
+      <div class="cal-legend">
+        ${legendItems}
       </div>
     </div>`;
-  document.body.appendChild(modal);
 
-  // Hover effects via JS (CSS not available inline)
-  modal.querySelectorAll('.cal-block').forEach(el => {
-    el.addEventListener('mouseenter', () => {
-      el.style.transform = 'translateY(-4px)';
-      el.style.boxShadow = '0 8px 24px rgba(0,0,0,0.25)';
-    });
-    el.addEventListener('mouseleave', () => {
-      el.style.transform = '';
-      el.style.boxShadow = el.style.boxShadow.includes('12px') ? el.style.boxShadow : 'none';
-    });
-  });
+  document.body.appendChild(modal);
 }
 
 
