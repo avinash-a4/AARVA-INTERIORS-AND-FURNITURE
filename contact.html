@@ -61,7 +61,11 @@
       <div class="contact-form-wrap reveal">
         <span class="label-text">Send a Message</span>
         <div class="gold-divider mt-2 mb-4"></div>
-        <form id="contactForm" class="contact-form" novalidate>
+        <form id="contactForm" class="contact-form" action="https://api.web3forms.com/submit" method="POST" novalidate>
+          <input type="hidden" name="access_key" value="2686acdf-ae0b-48ec-8680-5aea869850fd">
+          <input type="hidden" name="to" value="aaravinteriordesigners@gmail.com">
+          <input type="hidden" name="subject" value="New Inquiry from AARAV Website">
+          <input type="hidden" name="from_name" value="AARAV Website">
           <div class="form-row">
             <div class="form-group">
               <label class="form-label" for="cName">Full Name *</label>
@@ -207,7 +211,6 @@ document.getElementById('contactForm').addEventListener('submit', async function
   const name = form.name.value.trim();
   const email = form.email.value.trim();
   const phone = form.phone.value.trim();
-  const service = form.service.value;
   const message = form.message.value.trim();
 
   // Basic Validation
@@ -223,13 +226,16 @@ document.getElementById('contactForm').addEventListener('submit', async function
   btn.disabled = true;
 
   try {
-    const res = await fetch('/api/contact', {
+    const formData = new FormData(form);
+    
+    const res = await fetch(form.action, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, phone, service, message })
+      body: formData
     });
 
-    if (res.ok) {
+    const result = await res.json();
+
+    if (result.success) {
       btn.textContent = '✓ Message Sent!';
       btn.style.background = '#4CAF50';
       if(typeof showToast === 'function') showToast('✓ Your message has been sent! We\'ll respond within 24 hours.', 'success');
