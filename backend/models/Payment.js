@@ -17,6 +17,9 @@ const PaymentSchema = new mongoose.Schema({
     enum: ['income', 'expense'],
     default: 'income'
   },
+  // Permanent name snapshots — written at creation time so history survives deletion
+  clientNameSnapshot:   { type: String, default: '' },
+  projectTitleSnapshot: { type: String, default: '' },
   dueDate:   { type: Date },
   paidAt:    { type: Date },
   invoiceUrl: { type: String },

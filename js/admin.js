@@ -692,6 +692,7 @@ async function loadAdminPayments() {
     const tbody = document.getElementById('adminPaymentsBody');
     if (!tbody) return;
 
+    // Stat accumulators — ONLY count payments linked to still-existing projects
     let totalIncome = 0;
     let totalExpenses = 0;
     tbody.innerHTML = '';
@@ -699,8 +700,12 @@ async function loadAdminPayments() {
     payments.forEach(p => {
       const isIncome  = (p.type || 'income') === 'income';
       const isExpense = p.type === 'expense';
-      if (isIncome)  totalIncome   += p.amount ?? 0;
-      if (isExpense) totalExpenses += p.amount ?? 0;
+
+      // ── Live financial cards: only active (non-orphaned) payments count ──────
+      // p.projectId is null when the project was deleted (lookup returned nothing)
+      const isActive = !!p.projectId;
+      if (isActive && isIncome)  totalIncome   += p.amount ?? 0;
+      if (isActive && isExpense) totalExpenses += p.amount ?? 0;
 
       const cat = p.category || 'Other';
       const dateStr = p.paidAt
@@ -713,9 +718,13 @@ async function loadAdminPayments() {
         ? `<span class="status-badge" style="background:rgba(255,107,107,0.15);color:#ff6b6b">Expense</span>`
         : `<span class="status-badge" style="background:rgba(76,175,80,0.15);color:#4CAF50">Income</span>`;
 
-      // Graceful fallbacks for deleted project/client — never blank, never crash
-      const clientName  = p.clientId?.name  ?? '<span style="color:var(--text-muted);font-style:italic">Client Deleted</span>';
-      const projectName = p.projectId?.title ?? '<span style="color:var(--text-muted);font-style:italic">Project Deleted</span>';
+      // ── Name resolution: live name → snapshot → deleted label ────────────────
+      const clientName = p.clientId?.name
+        || p.clientNameSnapshot
+        || '<span style="color:var(--text-muted);font-style:italic">Client Deleted</span>';
+      const projectName = p.projectId?.title
+        || p.projectTitleSnapshot
+        || '<span style="color:var(--text-muted);font-style:italic">Project Deleted</span>';
 
       // Only wire click-to-history when we have a real clientId
       const rowClick = clientIdStr

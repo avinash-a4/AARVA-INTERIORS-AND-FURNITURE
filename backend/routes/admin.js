@@ -300,6 +300,12 @@ router.post('/payments', async (req, res) => {
 
     const paymentType = (type === 'expense') ? 'expense' : 'income'; // safe fallback
 
+    // Snapshot client name + project title at creation time — survives deletion permanently
+    const [clientDoc, projectDoc] = await Promise.all([
+      User.findById(clientId).select('name').lean(),
+      Project.findById(projectId).select('title').lean(),
+    ]);
+
     const payment = await Payment.create({
       projectId, clientId,
       amount:      Number(amount),
@@ -309,6 +315,9 @@ router.post('/payments', async (req, res) => {
       description: description || '',
       status:      'paid',
       paidAt:      new Date(),
+      // Permanent audit snapshots
+      clientNameSnapshot:   clientDoc?.name  || '',
+      projectTitleSnapshot: projectDoc?.title || '',
     });
 
     // Only increment amountPaid for INCOME — expenses must never affect client balance
@@ -320,7 +329,7 @@ router.post('/payments', async (req, res) => {
         { new: true }
       );
     } else {
-      project = await Project.findById(projectId);
+      project = projectDoc || null;
     }
 
     res.status(201).json({ payment, project });

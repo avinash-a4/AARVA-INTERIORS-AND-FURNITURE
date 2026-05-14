@@ -16,10 +16,26 @@ router.get('/project', async (req, res) => {
   res.json(project);
 });
 
-// GET /api/client/payments  — income entries only (expenses are internal, never shown to clients)
+// GET /api/client/payments
+// Income entries only — expenses are internal admin records, never shown to clients.
+// $or handles two cases:
+//   1. Payments created after Phase 2.5 — have explicit type:'income' stored in DB
+//   2. Historical payments created before Phase 2.5 — type field is physically absent
+//      (Mongoose defaults do NOT apply retroactively to stored documents)
+// Expense payments always have type:'expense' explicitly stored, so they remain excluded.
 router.get('/payments', async (req, res) => {
-  const payments = await Payment.find({ clientId: req.user._id, type: 'income' }).sort('-createdAt');
-  res.json(payments);
+  try {
+    const payments = await Payment.find({
+      clientId: req.user._id,
+      $or: [
+        { type: 'income' },
+        { type: { $exists: false } },
+      ],
+    }).sort('-createdAt');
+    res.json(payments);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
 
 // GET /api/client/messages
