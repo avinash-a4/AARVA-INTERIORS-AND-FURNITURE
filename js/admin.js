@@ -708,15 +708,24 @@ async function loadAdminPayments() {
         : '\u2014';
       const clientIdStr = p.clientId?._id ?? p.clientId ?? '';
 
-      // Type badge: green for income, orange-red for expense
+      // Type badge: green for income, red for expense
       const typeBadge = isExpense
         ? `<span class="status-badge" style="background:rgba(255,107,107,0.15);color:#ff6b6b">Expense</span>`
         : `<span class="status-badge" style="background:rgba(76,175,80,0.15);color:#4CAF50">Income</span>`;
 
+      // Graceful fallbacks for deleted project/client — never blank, never crash
+      const clientName  = p.clientId?.name  ?? '<span style="color:var(--text-muted);font-style:italic">Client Deleted</span>';
+      const projectName = p.projectId?.title ?? '<span style="color:var(--text-muted);font-style:italic">Project Deleted</span>';
+
+      // Only wire click-to-history when we have a real clientId
+      const rowClick = clientIdStr
+        ? `onclick="openPaymentHistory('${clientIdStr}')" style="cursor:pointer" class="hover-row"`
+        : `style="opacity:0.75"`;
+
       tbody.insertAdjacentHTML('beforeend', `
-        <tr onclick="openPaymentHistory('${clientIdStr}')" style="cursor:pointer" class="hover-row">
-          <td>${p.clientId?.name ?? '\u2014'}</td>
-          <td>${p.projectId?.title ?? 'Project Deleted'}</td>
+        <tr ${rowClick}>
+          <td>${clientName}</td>
+          <td>${projectName}</td>
           <td>\u20b9 ${(p.amount ?? 0).toLocaleString('en-IN')}</td>
           <td>${typeBadge}</td>
           <td><span class="status-badge" style="background:rgba(198,169,105,0.1);color:#C6A969">${cat}</span></td>

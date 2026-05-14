@@ -235,14 +235,13 @@ router.post('/projects/:id/designs/upload', upload.single('file'), async (req, r
 });
 
 // GET /api/admin/payments
-// Payments are NEVER deleted when a project is removed (financial audit trail).
-// Strategy: single aggregation pipeline — $lookup joins projects/users inline,
-// $match { project: { $ne: [] } } eliminates orphan payments at the DB engine
-// level (no $in array, no in-memory filtering, scales to 100k+ records).
+// Audit table — ALL payments are always returned regardless of project/client existence.
+// $lookup is LEFT JOIN by nature; missing project/client produces empty array → $arrayElemAt
+// returns null → frontend shows "Project Deleted" / "Client Deleted" gracefully.
 router.get('/payments', async (req, res) => {
   try {
     const payments = await Payment.aggregate([
-      // ── Step 1: join with projects collection ──────────────────────────────
+      // ── Step 1: left-join projects (empty array when project deleted) ────────
       {
         $lookup: {
           from: 'projects',
@@ -254,14 +253,7 @@ router.get('/payments', async (req, res) => {
           as: 'project'
         },
       },
-      // ── Step 2: discard payments whose project no longer exists ────────────
-      // "project.0" $exists is faster than $ne:[] — direct element existence
-      // check, no array comparison, MongoDB-optimized for $lookup results.
-      // {
-      //   $match: { 'project.0': { $exists: true } },
-      // },
-
-      // ── Step 3: join with users collection for client name ─────────────────
+      // ── Step 2: left-join users (empty array when client deleted) ────────────
       {
         $lookup: {
           from: 'users',
@@ -273,37 +265,21 @@ router.get('/payments', async (req, res) => {
           as: 'client'
         },
       },
-      // ── Step 4: reshape to match Mongoose populate response structure ──────
-      // projectId: { _id, title }  |  clientId: { _id, name }
+      // ── Step 3: promote first element (null when lookup found nothing) ───────
       {
         $addFields: {
           projectId: { $arrayElemAt: ['$project', 0] },
           clientId:  { $arrayElemAt: ['$client',  0] },
         },
       },
+      // ── Step 4: drop raw lookup arrays only — keep ALL payment fields ────────
+      // Exclusion-only $project avoids the mixed include+exclude pitfall.
+      // Every field on the Payment document (amount, mode, category, TYPE, etc.)
+      // passes through automatically — no field is accidentally omitted.
       {
-        $project: {
-          // Payment fields
-          amount:      1,
-          mode:        1,
-          category:    1,
-          description: 1,
-          status:      1,
-          paidAt:      1,
-          dueDate:     1,
-          invoiceUrl:  1,
-          createdAt:   1,
-          // Shaped relations — only expose what the frontend needs
-          'projectId._id':   1,
-          'projectId.title': 1,
-          'clientId._id':    1,
-          'clientId.name':   1,
-          // Drop the raw lookup arrays
-          project: 0,
-          client:  0,
-        },
+        $project: { project: 0, client: 0 },
       },
-      // ── Step 5: sort newest first ──────────────────────────────────────────
+      // ── Step 5: newest first ─────────────────────────────────────────────────
       { $sort: { createdAt: -1 } },
     ]);
 
@@ -312,6 +288,7 @@ router.get('/payments', async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
+
 
 // POST /api/admin/payments  — records payment + conditionally increments project.amountPaid
 router.post('/payments', async (req, res) => {
