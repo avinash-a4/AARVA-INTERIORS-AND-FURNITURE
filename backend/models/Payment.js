@@ -7,6 +7,16 @@ const PaymentSchema = new mongoose.Schema({
   description: { type: String, default: '' },
   status:    { type: String, enum: ['pending','paid'], default: 'pending' },
   mode:      { type: String, enum: ['Cash','UPI','Cheque','Bank Transfer','Other'], default: 'Other' },
+  category:  { 
+    type: String, 
+    enum: ['Plywood', 'Laminate', 'Hardware', 'Carpenter', 'Transport', 'Salaries', 'Other'], 
+    default: 'Other' 
+  },
+  type: {
+    type: String,
+    enum: ['income', 'expense'],
+    default: 'income'
+  },
   dueDate:   { type: Date },
   paidAt:    { type: Date },
   invoiceUrl: { type: String },

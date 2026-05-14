@@ -692,29 +692,55 @@ async function loadAdminPayments() {
     const tbody = document.getElementById('adminPaymentsBody');
     if (!tbody) return;
 
-    let total = 0;
+    let totalIncome = 0;
+    let totalExpenses = 0;
     tbody.innerHTML = '';
+
     payments.forEach(p => {
-      total += p.amount ?? 0;
+      const isIncome  = (p.type || 'income') === 'income';
+      const isExpense = p.type === 'expense';
+      if (isIncome)  totalIncome   += p.amount ?? 0;
+      if (isExpense) totalExpenses += p.amount ?? 0;
+
+      const cat = p.category || 'Other';
       const dateStr = p.paidAt
         ? new Date(p.paidAt).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' })
         : '\u2014';
+      const clientIdStr = p.clientId?._id ?? p.clientId ?? '';
+
+      // Type badge: green for income, orange-red for expense
+      const typeBadge = isExpense
+        ? `<span class="status-badge" style="background:rgba(255,107,107,0.15);color:#ff6b6b">Expense</span>`
+        : `<span class="status-badge" style="background:rgba(76,175,80,0.15);color:#4CAF50">Income</span>`;
+
       tbody.insertAdjacentHTML('beforeend', `
-        <tr>
+        <tr onclick="openPaymentHistory('${clientIdStr}')" style="cursor:pointer" class="hover-row">
           <td>${p.clientId?.name ?? '\u2014'}</td>
-          <td>${p.projectId?.title ?? '\u2014'}</td>
-          <td>${dateStr}</td>
+          <td>${p.projectId?.title ?? 'Project Deleted'}</td>
           <td>\u20b9 ${(p.amount ?? 0).toLocaleString('en-IN')}</td>
+          <td>${typeBadge}</td>
+          <td><span class="status-badge" style="background:rgba(198,169,105,0.1);color:#C6A969">${cat}</span></td>
           <td>${p.mode ?? '\u2014'}</td>
-          <td>${p.description || '\u2014'}</td>
+          <td>${dateStr}</td>
         </tr>`);
     });
 
+    const profit = totalIncome - totalExpenses;
     const el = (id) => document.getElementById(id);
-    const latest = payments[0]?.amount ?? 0;
-    if (el('pay_total'))     el('pay_total').textContent     = '\u20b9 ' + formatAdminINR(total);
-    if (el('pay_collected')) el('pay_collected').textContent = payments.length.toString();
-    if (el('pay_pending'))   el('pay_pending').textContent   = '\u20b9 ' + formatAdminINR(latest);
+
+    if (el('pay_total')) {
+      el('pay_total').textContent = '\u20b9 ' + formatAdminINR(totalIncome);
+      if (el('pay_total').nextElementSibling) el('pay_total').nextElementSibling.textContent = 'Total Income';
+    }
+    if (el('pay_collected')) {
+      el('pay_collected').textContent = '\u20b9 ' + formatAdminINR(totalExpenses);
+      if (el('pay_collected').nextElementSibling) el('pay_collected').nextElementSibling.textContent = 'Total Expenses';
+    }
+    if (el('pay_pending')) {
+      el('pay_pending').textContent = (profit >= 0 ? '\u20b9 ' : '\u2013\u20b9 ') + formatAdminINR(Math.abs(profit));
+      el('pay_pending').style.color = profit >= 0 ? '#4CAF50' : '#ff6b6b';
+      if (el('pay_pending').nextElementSibling) el('pay_pending').nextElementSibling.textContent = 'Net Profit';
+    }
   } catch (err) {
     if (err.message?.includes('401')) { Auth.logout(); return; }
     console.warn('Admin payments load error:', err.message);
@@ -754,7 +780,9 @@ async function submitPayment(e) {
   e.preventDefault();
   const projectRaw = document.getElementById('pay_project')?.value;
   const amount     = document.getElementById('pay_amount')?.value;
+  const type       = document.getElementById('payment_type')?.value || 'income';
   const mode       = document.getElementById('pay_mode')?.value;
+  const category   = document.getElementById('payment_category')?.value || 'Other';
   const desc       = document.getElementById('pay_desc')?.value?.trim();
 
   if (!projectRaw) { showToast('\u2717 Select a project', 'error'); return; }
@@ -765,8 +793,9 @@ async function submitPayment(e) {
   if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Saving\u2026'; }
 
   try {
-    await API.post('/admin/payments', { projectId, clientId, amount: Number(amount), mode, description: desc });
-    showToast('\u2713 Payment recorded!', 'success');
+    await API.post('/admin/payments', { projectId, clientId, amount: Number(amount), type, mode, category, description: desc });
+    const label = type === 'expense' ? 'Expense recorded!' : 'Payment recorded!';
+    showToast('\u2713 ' + label, 'success');
     closePaymentModal();
     e.target.reset();
     loadAdminPayments();
@@ -778,6 +807,50 @@ async function submitPayment(e) {
     if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Record Payment'; }
   }
 }
+
+// ── PAYMENT HISTORY MODAL ──────────────────────────────────────
+async function openPaymentHistory(clientId) {
+  if (!clientId || clientId === 'undefined') return;
+  try {
+    const payments = await API.get(`/admin/payments/client/${clientId}`);
+    const tbody = document.getElementById('paymentHistoryBody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    
+    if (payments.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--text-muted)">No payment history found.</td></tr>';
+    } else {
+      payments.forEach(p => {
+        const dateStr   = p.paidAt ? new Date(p.paidAt).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) : '\u2014';
+        const cat       = p.category || 'Other';
+        const isExpense = p.type === 'expense';
+        const typeBadge = isExpense
+          ? `<span class="status-badge" style="background:rgba(255,107,107,0.15);color:#ff6b6b">Expense</span>`
+          : `<span class="status-badge" style="background:rgba(76,175,80,0.15);color:#4CAF50">Income</span>`;
+        tbody.insertAdjacentHTML('beforeend', `
+          <tr>
+            <td>${dateStr}</td>
+            <td>\u20b9 ${(p.amount ?? 0).toLocaleString('en-IN')}</td>
+            <td>${typeBadge}</td>
+            <td><span class="status-badge" style="background:rgba(198,169,105,0.1);color:#C6A969">${cat}</span></td>
+            <td>${p.mode ?? '\u2014'}</td>
+            <td>${p.description || '\u2014'}</td>
+          </tr>
+        `);
+      });
+    }
+    
+    document.getElementById('paymentHistoryModal')?.classList.remove('hidden');
+  } catch (err) {
+    console.error('Failed to load payment history:', err);
+    showToast('\u2717 Failed to load payment history', 'error');
+  }
+}
+
+function closePaymentHistory() {
+  document.getElementById('paymentHistoryModal')?.classList.add('hidden');
+}
+
 
 // \u2500\u2500 QUERIES \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 async function loadQueries() {

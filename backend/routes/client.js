@@ -16,9 +16,9 @@ router.get('/project', async (req, res) => {
   res.json(project);
 });
 
-// GET /api/client/payments
+// GET /api/client/payments  — income entries only (expenses are internal, never shown to clients)
 router.get('/payments', async (req, res) => {
-  const payments = await Payment.find({ clientId: req.user._id }).sort('-createdAt');
+  const payments = await Payment.find({ clientId: req.user._id, type: 'income' }).sort('-createdAt');
   res.json(payments);
 });
 

@@ -143,6 +143,8 @@ router.post('/projects/:id/designs', async (req, res) => {
     project.designs.push({ name, type, url, approved: false, uploadedAt: new Date() });
     await project.save();
 
+    res.status(201).json({ message: 'Design saved', designs: project.designs });
+
     // ── Send email notification (silent — never crashes the API) ──
     try {
       const client = project.clientId;  // already populated above
@@ -152,7 +154,7 @@ router.post('/projects/:id/designs', async (req, res) => {
           auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
         });
 
-        await transporter.sendMail({
+        transporter.sendMail({
           from:    `"AARAV Interiors" <${process.env.EMAIL_USER}>`,
           to:      client.email,
           subject: `New Design Added — ${project.title}`,
@@ -174,14 +176,11 @@ router.post('/projects/:id/designs', async (req, res) => {
               <hr style="border:none;border-top:1px solid #eee;margin:1.5rem 0" />
               <p style="color:#999;font-size:0.85rem">— AARAV Interiors &nbsp;&bull;&nbsp; Luxury Interior Designers</p>
             </div>`,
-        });
-        console.log(`✓ Design notification sent to ${client.email}`);
+        }).catch(err => console.warn(err));
       }
     } catch (mailErr) {
       console.warn('Email notification failed (non-fatal):', mailErr.message);
     }
-
-    res.status(201).json({ message: 'Design saved', designs: project.designs });
   } catch (err) {
     console.error('Save design error:', err);
     res.status(500).json({ message: err.message || 'Failed to save design' });
@@ -258,9 +257,10 @@ router.get('/payments', async (req, res) => {
       // ── Step 2: discard payments whose project no longer exists ────────────
       // "project.0" $exists is faster than $ne:[] — direct element existence
       // check, no array comparison, MongoDB-optimized for $lookup results.
-      {
-        $match: { 'project.0': { $exists: true } },
-      },
+      // {
+      //   $match: { 'project.0': { $exists: true } },
+      // },
+
       // ── Step 3: join with users collection for client name ─────────────────
       {
         $lookup: {
@@ -286,6 +286,7 @@ router.get('/payments', async (req, res) => {
           // Payment fields
           amount:      1,
           mode:        1,
+          category:    1,
           description: 1,
           status:      1,
           paidAt:      1,
@@ -312,29 +313,38 @@ router.get('/payments', async (req, res) => {
   }
 });
 
-// POST /api/admin/payments  — records payment + increments project.amountPaid
+// POST /api/admin/payments  — records payment + conditionally increments project.amountPaid
 router.post('/payments', async (req, res) => {
   try {
-    const { projectId, clientId, amount, mode, description } = req.body;
+    const { projectId, clientId, amount, mode, category, type, description } = req.body;
     if (!projectId || !clientId || !amount) {
       return res.status(400).json({ message: 'projectId, clientId and amount are required' });
     }
+
+    const paymentType = (type === 'expense') ? 'expense' : 'income'; // safe fallback
 
     const payment = await Payment.create({
       projectId, clientId,
       amount:      Number(amount),
       mode:        mode || 'Other',
+      category:    category || 'Other',
+      type:        paymentType,
       description: description || '',
       status:      'paid',
       paidAt:      new Date(),
     });
 
-    // Atomically increment project.amountPaid
-    const project = await Project.findByIdAndUpdate(
-      projectId,
-      { $inc: { amountPaid: Number(amount) } },
-      { new: true }
-    );
+    // Only increment amountPaid for INCOME — expenses must never affect client balance
+    let project = null;
+    if (paymentType === 'income') {
+      project = await Project.findByIdAndUpdate(
+        projectId,
+        { $inc: { amountPaid: Number(amount) } },
+        { new: true }
+      );
+    } else {
+      project = await Project.findById(projectId);
+    }
 
     res.status(201).json({ payment, project });
   } catch (err) {
@@ -386,6 +396,39 @@ router.get('/messages/:projectId', async (req, res) => {
 router.post('/messages', async (req, res) => {
   const msg = await Message.create({ ...req.body, senderId: req.user._id, senderRole: 'admin' });
   res.status(201).json(msg);
+});
+
+// GET /api/admin/payments/client/:clientId
+router.get('/payments/client/:clientId', async (req, res) => {
+  try {
+    const payments = await Payment.find({ clientId: req.params.clientId }).sort('-createdAt');
+    res.json(payments);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// GET /api/admin/projects/:id/financials
+// Returns live income, expense, profit, and balance derived from the Payment collection (SSOT).
+router.get('/projects/:id/financials', async (req, res) => {
+  try {
+    const project = await Project.findById(req.params.id);
+    if (!project) return res.status(404).json({ message: 'Project not found' });
+
+    const result = await Payment.aggregate([
+      { $match: { projectId: new (require('mongoose').Types.ObjectId)(req.params.id) } },
+      { $group: { _id: '$type', total: { $sum: '$amount' } } }
+    ]);
+
+    const totalIncome   = result.find(r => r._id === 'income')?.total  || 0;
+    const totalExpenses = result.find(r => r._id === 'expense')?.total || 0;
+    const profit        = totalIncome - totalExpenses;
+    const balanceDue    = Math.max(0, (project.totalCost || 0) - totalIncome);
+
+    res.json({ totalIncome, totalExpenses, profit, balanceDue, totalCost: project.totalCost || 0 });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
 
 module.exports = router;

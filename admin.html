@@ -169,7 +169,7 @@
       </div>
       <div class="dash-card-body" style="padding:0">
         <table class="pay-table admin-table">
-          <thead><tr><th>Client</th><th>Project</th><th>Date</th><th>Amount</th><th>Mode</th><th>Description</th></tr></thead>
+          <thead><tr><th>Client</th><th>Project</th><th>Amount</th><th>Type</th><th>Category</th><th>Mode</th><th>Date</th></tr></thead>
           <tbody id="adminPaymentsBody"></tbody>
         </table>
       </div>
@@ -230,6 +230,12 @@
   <div class="modal-box">
     <div class="modal-header"><h3>Record Payment</h3><button onclick="closePaymentModal()">✕</button></div>
     <form class="modal-form" onsubmit="submitPayment(event)">
+      <div class="form-group"><label class="form-label">Payment Type</label>
+        <select class="form-input" id="payment_type">
+          <option value="income">Client Payment (Income)</option>
+          <option value="expense">Project Expense</option>
+        </select>
+      </div>
       <div class="form-group"><label class="form-label">Select Project</label>
         <select class="form-input" id="pay_project"><option value="">— Select Project —</option></select>
       </div>
@@ -244,6 +250,17 @@
           <option value="Cheque">Cheque</option>
         </select>
       </div>
+      <div class="form-group"><label class="form-label">Category</label>
+        <select class="form-input" id="payment_category">
+          <option value="Plywood">Plywood</option>
+          <option value="Laminate">Laminate</option>
+          <option value="Hardware">Hardware</option>
+          <option value="Carpenter">Carpenter</option>
+          <option value="Transport">Transport</option>
+          <option value="Salaries">Salaries</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
       <div class="form-group"><label class="form-label">Description (optional)</label>
         <input class="form-input" id="pay_desc" placeholder="e.g. Phase 2 payment" />
       </div>
@@ -251,5 +268,32 @@
     </form>
   </div>
 </div>
+
+<!-- Payment History Modal -->
+<div class="admin-modal hidden" id="paymentHistoryModal">
+  <div class="modal-backdrop" onclick="closePaymentHistory()"></div>
+  <div class="modal-box" style="max-width:800px">
+    <div class="modal-header">
+      <h3 id="paymentHistoryTitle">Client Payment History</h3>
+      <button onclick="closePaymentHistory()">✕</button>
+    </div>
+    <div style="max-height:400px;overflow-y:auto;margin-top:1rem;">
+      <table class="pay-table admin-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Amount</th>
+            <th>Type</th>
+            <th>Category</th>
+            <th>Mode</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody id="paymentHistoryBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
