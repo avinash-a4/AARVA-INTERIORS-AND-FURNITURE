@@ -112,6 +112,9 @@ const API = {
       return data;
     } catch (err) {
       console.warn('API Error:', err.message);
+      if (err.message === 'Failed to fetch') {
+        throw new Error('Network error: Request failed (possibly blocked by CORS or server offline)');
+      }
       throw err;
     }
   },
