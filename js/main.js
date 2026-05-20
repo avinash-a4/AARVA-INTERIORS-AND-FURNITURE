@@ -96,7 +96,7 @@ const Auth = {
 
 // ── API HELPER ──
 const API = {
-  BASE: 'https://aarav-backend.onrender.com/api',
+  BASE: 'http://localhost:5000/api',
   async req(method, endpoint, body) {
     try {
       const opts = {

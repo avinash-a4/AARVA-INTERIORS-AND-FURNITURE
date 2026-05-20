@@ -753,8 +753,8 @@ async function clientSubmitProof(planId, colId, input) {
   formData.append('file', file);
 
   try {
-    const token = localStorage.getItem('token');
-    const BASE_URL = window.API_BASE || 'https://aarav-interiors.onrender.com/api';
+    const token = Auth.getToken();
+    const BASE_URL = API.BASE;
     const response = await fetch(`${BASE_URL}/client/collections/${planId}/collections/${colId}/submit-proof`, {
       method:  'POST',
       headers: { 'Authorization': `Bearer ${token}` },
@@ -768,6 +768,9 @@ async function clientSubmitProof(planId, colId, input) {
     // Reload the panel to reflect new status
     setTimeout(() => loadCollections(), 1200);
   } catch (err) {
-    if (statusEl) statusEl.innerHTML = `<span style="color:#ff6b6b;font-size:0.75rem">✗ ${err.message}</span>`;
+    const errMsg = err.message === 'Failed to fetch'
+      ? 'Network/CORS error: Could not reach the API server'
+      : (err.message || 'Upload failed');
+    if (statusEl) statusEl.innerHTML = `<span style="color:#ff6b6b;font-size:0.75rem">✗ ${errMsg}</span>`;
   }
 }
