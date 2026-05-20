@@ -61,7 +61,7 @@ async function loadClients() {
         <td><span class="status-badge ${hasProject ? 'status-active' : ''}">${hasProject ? 'Active' : 'No Project'}</span></td>
         <td style="display:flex;gap:0.4rem;flex-wrap:wrap">
           <button class="btn btn-outline" style="padding:0.3rem 0.75rem;font-size:0.68rem"
-            onclick="openClientCalendar(_clientDataMap.get('${client._id}'))">View</button>
+            onclick="openWorkflowCalendarModal(_clientDataMap.get('${client._id}'))">Assign Workflow Calendar</button>
           <button class="btn btn-ghost" style="padding:0.3rem 0.75rem;font-size:0.68rem;color:#ff6b6b;border-color:#ff6b6b"
             onclick="deleteClient('${client._id}')">Delete</button>
         </td>
@@ -73,249 +73,280 @@ async function loadClients() {
   }
 }
 
-// ── CLIENT CALENDAR MODAL (Month View) ──────────────────────────
-const WORKFLOW = [
-  { day: 1,  label: 'Ceiling Work',     short: 'Ceiling',   group: 1 },
-  { day: 2,  label: 'Ceiling Work',     short: 'Ceiling',   group: 1 },
-  { day: 3,  label: 'Procure Wires',    short: 'Wiring',    group: 2 },
-  { day: 4,  label: 'Procure Wires',    short: 'Wiring',    group: 2 },
-  { day: 5,  label: 'Sheet Fixing',     short: 'Sheets',    group: 3 },
-  { day: 6,  label: 'Sheet Fixing',     short: 'Sheets',    group: 3 },
-  { day: 7,  label: 'Finishing & Cleaning', short: 'Finish',group: 4 },
-  { day: 8,  label: 'Putty & Paint',    short: 'Paint',     group: 5 },
-  { day: 9,  label: 'Putty & Paint',    short: 'Paint',     group: 5 },
-  { day: 10, label: 'Putty & Paint',    short: 'Paint',     group: 5 },
-  { day: 11, label: 'Interior Work Start', short: 'Interior',group: 6 },
+// ── MANUAL WORKFLOW CALENDAR SYSTEM ──────────────────────────────
+
+const WORK_OPTIONS = [
+  'Ceiling Work – Framing',
+  'Procure Wires',
+  'Sheet Fixing',
+  'Finishing & Cleaning',
+  'Putty Paint',
+  'Interior Work Starts',
 ];
 
-const GROUP_COLORS = {
-  1: { dot: '#C6A969', bg: 'rgba(198,169,105,0.22)', border: '#C6A969', glow: 'rgba(198,169,105,0.45)' },
-  2: { dot: '#64B4FF', bg: 'rgba(100,180,255,0.18)', border: '#64B4FF', glow: 'rgba(100,180,255,0.45)' },
-  3: { dot: '#78C88C', bg: 'rgba(120,200,140,0.18)', border: '#78C88C', glow: 'rgba(120,200,140,0.45)' },
-  4: { dot: '#FFA050', bg: 'rgba(255,160,80,0.18)',  border: '#FFA050', glow: 'rgba(255,160,80,0.45)'  },
-  5: { dot: '#C864E6', bg: 'rgba(200,100,230,0.18)', border: '#C864E6', glow: 'rgba(200,100,230,0.45)' },
-  6: { dot: '#50DCC8', bg: 'rgba(80,220,200,0.18)',  border: '#50DCC8', glow: 'rgba(80,220,200,0.45)'  },
+const WORK_COLORS = {
+  'Ceiling Work – Framing': { dot: '#C6A969', bg: 'rgba(198,169,105,0.22)', border: '#C6A969' },
+  'Procure Wires':          { dot: '#64B4FF', bg: 'rgba(100,180,255,0.18)', border: '#64B4FF' },
+  'Sheet Fixing':           { dot: '#9B59B6', bg: 'rgba(155,89,182,0.18)',  border: '#9B59B6' },
+  'Finishing & Cleaning':   { dot: '#78C88C', bg: 'rgba(120,200,140,0.18)', border: '#78C88C' },
+  'Putty Paint':            { dot: '#FFA050', bg: 'rgba(255,160,80,0.18)',  border: '#FFA050' },
+  'Interior Work Starts':   { dot: '#50DCC8', bg: 'rgba(80,220,200,0.18)', border: '#50DCC8' },
 };
 
-/**
- * Returns the WORKFLOW entry for a given Date object, or null if no task.
- * @param {Date} date
- * @param {Date} startDate – the project start date (Day 1)
- */
-function getTaskForDate(date, startDate) {
-  // Normalize both to midnight to eliminate DST / time-of-day skew
-  const start = new Date(startDate);
-  start.setHours(0, 0, 0, 0);
-  const current = new Date(date);
-  current.setHours(0, 0, 0, 0);
-  // Math.floor guarantees no rounding surprises at day boundaries
-  const diffDays = Math.floor((current - start) / (1000 * 60 * 60 * 24)); // 0-based
-  const dayNum   = diffDays + 1;                                           // 1-based
-  return WORKFLOW.find(w => w.day === dayNum) || null;
+/** Compute status purely from dates — no cron, no DB field */
+function computeWorkflowStatus(startDate, endDate) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const s = new Date(startDate); s.setHours(0,0,0,0);
+  const e = new Date(endDate);   e.setHours(0,0,0,0);
+  if (today < s) return 'Upcoming';
+  if (today > e) return 'Completed';
+  return 'Active';
 }
 
-/**
- * Builds the full month calendar HTML string.
- * @param {Date} refDate      – any date in the target month
- * @param {Date} projectStart – project.startDate
- */
-function generateCalendar(refDate, projectStart) {
-  const today = new Date(); today.setHours(0, 0, 0, 0);
+/** Month-grid calendar that colors date ranges from workflowItems array */
+function generateWorkflowCalendar(refDate, workflowItems) {
+  const today = new Date(); today.setHours(0,0,0,0);
   const year  = refDate.getFullYear();
   const month = refDate.getMonth();
-
   const firstDay  = new Date(year, month, 1);
   const lastDay   = new Date(year, month + 1, 0);
-  const startDow  = firstDay.getDay(); // 0=Sun
+  const startDow  = firstDay.getDay();
   const totalDays = lastDay.getDate();
-
   const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  const headerHTML = days.map(d =>
-    `<div class="cal-grid-hdr">${d}</div>`
-  ).join('');
-
+  const headerHTML = days.map(d => `<div class="cal-grid-hdr">${d}</div>`).join('');
   let cells = '';
-  // Empty leading cells
-  for (let i = 0; i < startDow; i++) {
-    cells += `<div class="cal-cell cal-cell--empty"></div>`;
-  }
-
+  for (let i = 0; i < startDow; i++) cells += '<div class="cal-cell cal-cell--empty"></div>';
   for (let d = 1; d <= totalDays; d++) {
-    const cellDate = new Date(year, month, d);
-    cellDate.setHours(0, 0, 0, 0);
-
-    const isToday  = cellDate.getTime() === today.getTime();
-    const isPast   = cellDate < today;
-
-    const task = projectStart ? getTaskForDate(cellDate, projectStart) : null;
-    const col  = task ? GROUP_COLORS[task.group] : null;
-
-    // Tooltip status — use Math.floor to match getTaskForDate's exact arithmetic
-    let tooltipStatus = '';
-    if (task) {
-      const diffDays = Math.floor((cellDate - today) / (1000 * 60 * 60 * 24));
-      if (isToday)           tooltipStatus = 'Today';
-      else if (diffDays < 0) tooltipStatus = 'Completed';
-      else                   tooltipStatus = `${diffDays} day${diffDays !== 1 ? 's' : ''} left`;
+    const cellDate = new Date(year, month, d); cellDate.setHours(0,0,0,0);
+    const isToday = cellDate.getTime() === today.getTime();
+    const isPast  = cellDate < today;
+    let matchItem = null;
+    for (const item of workflowItems) {
+      const s = new Date(item.startDate); s.setHours(0,0,0,0);
+      const e = new Date(item.endDate);   e.setHours(0,0,0,0);
+      if (cellDate >= s && cellDate <= e) { matchItem = item; break; }
     }
-
-    const tooltipAttr = task
-      ? `data-tip="${task.label}|${tooltipStatus}"`
-      : '';
-
+    const col = matchItem ? (WORK_COLORS[matchItem.workName] || null) : null;
     let dotHTML = '';
-    if (task && col) {
-      dotHTML = `<span class="cal-dot" style="background:${col.dot}"></span><span class="cal-task-label" style="color:${col.dot}">${task.short}</span>`;
+    if (matchItem && col) {
+      const short = matchItem.workName.split('–')[0].trim();
+      dotHTML = `<span class="cal-dot" style="background:${col.dot}"></span><span class="cal-task-label" style="color:${col.dot}">${short}</span>`;
     }
-
     const todayClass = isToday ? ' cal-cell--today' : '';
     const pastClass  = isPast  ? ' cal-cell--past'  : '';
-    const taskClass  = task    ? ' cal-cell--task'  : '';
-    const cellStyle  = (task && col && !isPast)
-      ? `style="border-color:${col.border};background:${col.bg};"`
-      : (task && col && isPast)
-        ? `style="border-color:${col.border}44;background:${col.bg.replace('0.18','0.07')};"`
-        : '';
-
-    cells += `
-      <div class="cal-cell${todayClass}${pastClass}${taskClass}" ${cellStyle} ${tooltipAttr}>
-        <span class="cal-num">${d}</span>
-        ${isToday ? '<span class="cal-today-badge">Today</span>' : ''}
-        <div class="cal-cell-body">
-          ${dotHTML}
-        </div>
-        ${task ? `<div class="cal-tooltip"><strong>${task.label}</strong><br><span>${tooltipStatus}</span></div>` : ''}
-      </div>`;
+    const taskClass  = matchItem ? ' cal-cell--task' : '';
+    const cellStyle  = (matchItem && col) ? `style="border-color:${col.border};background:${col.bg};"` : '';
+    const tooltip    = matchItem
+      ? `<div class="cal-tooltip"><strong>${matchItem.workName}</strong><br><span>${computeWorkflowStatus(matchItem.startDate, matchItem.endDate)}</span></div>`
+      : '';
+    cells += `<div class="cal-cell${todayClass}${pastClass}${taskClass}" ${cellStyle}><span class="cal-num">${d}</span>${isToday ? '<span class="cal-today-badge">Today</span>' : ''}<div class="cal-cell-body">${dotHTML}</div>${tooltip}</div>`;
   }
-
-  return `
-    <div class="cal-grid-wrap">
-      <div class="cal-grid">
-        ${headerHTML}
-        ${cells}
-      </div>
-    </div>`;
+  return `<div class="cal-grid-wrap"><div class="cal-grid">${headerHTML}${cells}</div></div>`;
 }
 
-function openClientCalendar(client) {
-  // Guard: client object must exist
-  if (!client) {
-    showToast('✗ Client data not found.', 'error');
-    return;
+// ── WORKFLOW MODAL STATE ────────────────────────────────────────
+let _workflowProjectId = null;
+let _workflowRowCount  = 0;
+
+function _buildWorkOptions(selected) {
+  return WORK_OPTIONS.map(o =>
+    `<option value="${o}"${o === selected ? ' selected' : ''}>${o}</option>`
+  ).join('');
+}
+
+function addWorkflowRow(container, preWork = '', preStart = '', preEnd = '') {
+  const idx = _workflowRowCount++;
+  const row = document.createElement('div');
+  row.className = 'wf-row';
+  row.innerHTML = `
+    <select class="form-input wf-work" id="wf_work_${idx}">
+      <option value="">— Select Work —</option>
+      ${_buildWorkOptions(preWork)}
+    </select>
+    <input type="date" class="form-input wf-start" id="wf_start_${idx}" value="${preStart}" />
+    <input type="date" class="form-input wf-end"   id="wf_end_${idx}"   value="${preEnd}"   />
+    <button type="button" class="wf-add-btn" onclick="addWorkflowRow(document.getElementById('wf_rows_container'))" title="Add row">+</button>`;
+  container.appendChild(row);
+}
+
+async function openWorkflowCalendarModal(client) {
+  if (!client) { showToast('\u2717 Client data not found.', 'error'); return; }
+  if (!client.projectId) { showToast('\u2717 No project assigned to this client yet.', 'error'); return; }
+  _workflowProjectId = client.projectId._id || client.projectId;
+  _workflowRowCount  = 0;
+
+  // Always fetch fresh project data
+  let workflowItems = [];
+  try {
+    const projects = await API.get('/admin/projects');
+    const proj = projects.find(p => String(p._id) === String(_workflowProjectId));
+    workflowItems = proj?.workflowCalendar || [];
+  } catch (err) { console.warn('Workflow fetch error:', err.message); }
+
+  // Pick the month to display: earliest startDate or current month
+  let viewDate = new Date();
+  if (workflowItems.length > 0) {
+    viewDate = workflowItems.reduce((min, item) => {
+      const d = new Date(item.startDate);
+      return d < min ? d : min;
+    }, new Date(workflowItems[0].startDate));
   }
-
-  const clientName   = client.name || 'Client';
-
-  // Guard: client must have a linked project with a startDate
-  if (!client.projectId || !client.projectId.startDate) {
-    // Still show a modal — just with a clear "no project" message
-    document.getElementById('clientCalendarModal')?.remove();
-    const modal = document.createElement('div');
-    modal.id = 'clientCalendarModal';
-    modal.className = 'admin-modal';
-    modal.innerHTML = `
-      <div class="modal-backdrop" onclick="document.getElementById('clientCalendarModal').remove()"></div>
-      <div class="cal-modal-box" style="max-width:480px">
-        <div class="cal-modal-header">
-          <div class="cal-modal-title"><h3>${clientName}</h3><span class="cal-modal-sub">Project Timeline</span></div>
-          <button class="cal-close-btn" onclick="document.getElementById('clientCalendarModal').remove()">✕</button>
-        </div>
-        <div class="cal-status-banner cal-status--na" style="margin:1.5rem 1.75rem 2rem">
-          ⚠ No project assigned yet — assign a project with a start date to view the workflow calendar.
-        </div>
-      </div>`;
-    document.body.appendChild(modal);
-    return;
-  }
-
-  const startDateStr = client.projectId.startDate;
-
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const projectStart = new Date(startDateStr);
-  projectStart.setHours(0, 0, 0, 0);
-
-  // Decide which month to show: default = current month
-  let viewDate = new Date(); // month reference
-
-  // Workflow edge cases
-  const lastWorkflowDate = projectStart
-    ? new Date(projectStart.getTime() + (WORKFLOW.length - 1) * 86400000)
-    : null;
-
-  let statusBanner = '';
-  if (!projectStart) {
-    statusBanner = `<div class="cal-status-banner cal-status--na">⚠ No project start date set for this client.</div>`;
-  } else if (today < projectStart) {
-    const daysUntil = Math.floor((projectStart - today) / (1000 * 60 * 60 * 24));
-    statusBanner = `<div class="cal-status-banner cal-status--pending">🕐 Project not started yet — starts in <strong>${daysUntil} day${daysUntil !== 1 ? 's' : ''}</strong></div>`;
-  } else if (lastWorkflowDate && today > lastWorkflowDate) {
-    statusBanner = `<div class="cal-status-banner cal-status--done">✅ All workflow phases completed!</div>`;
-  } else if (projectStart) {
-    const currentDay = Math.floor((today - projectStart) / (1000 * 60 * 60 * 24)) + 1;
-    const currentTask = WORKFLOW.find(w => w.day === currentDay);
-    statusBanner = `<div class="cal-status-banner cal-status--active">⚡ Day <strong>${currentDay}</strong> of 11${currentTask ? ` — <em>${currentTask.label}</em>` : ''}</div>`;
-  }
-
-  const dateLabel = startDateStr
-    ? `Starts ${new Date(startDateStr).toLocaleDateString('en-IN', { day:'numeric', month:'long', year:'numeric' })}`
-    : 'No start date';
 
   const monthName = viewDate.toLocaleDateString('en-IN', { month:'long', year:'numeric' });
+  const calHTML   = generateWorkflowCalendar(viewDate, workflowItems);
 
-  // Calendar HTML
-  const calendarHTML = generateCalendar(viewDate, projectStart);
+  const legendHTML = Object.entries(WORK_COLORS).map(([name, col]) =>
+    `<div class="cal-legend-item"><span class="cal-legend-dot" style="background:${col.dot}"></span>${name}</div>`
+  ).join('');
 
-  // Legend
-  const legendItems = [
-    { label: 'Ceiling Work',       group: 1 },
-    { label: 'Procure Wires',      group: 2 },
-    { label: 'Sheet Fixing',       group: 3 },
-    { label: 'Finishing & Clean',  group: 4 },
-    { label: 'Putty & Paint',      group: 5 },
-    { label: 'Interior Start',     group: 6 },
-  ].map(l => {
-    const c = GROUP_COLORS[l.group];
-    return `<div class="cal-legend-item"><span class="cal-legend-dot" style="background:${c.dot}"></span>${l.label}</div>`;
-  }).join('');
+  // Build saved workflow details section
+  let detailsHTML = '';
+  if (workflowItems.length > 0) {
+    const rows = workflowItems.map(item => {
+      const status  = computeWorkflowStatus(item.startDate, item.endDate);
+      const col     = WORK_COLORS[item.workName];
+      const dotSt   = col ? `background:${col.dot}` : 'background:#aaa';
+      const stCls   = status === 'Active' ? 'status-active' : status === 'Completed' ? 'status-done' : '';
+      const sStr    = new Date(item.startDate).toLocaleDateString('en-IN',{day:'numeric',month:'short'});
+      const eStr    = new Date(item.endDate).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
+      const safeName = item.workName.replace(/'/g, "\\'");
+      return `<div class="wf-detail-card">
+        <div class="wf-detail-left"><span class="wf-detail-dot" style="${dotSt}"></span>
+          <div><div class="wf-detail-name">${item.workName}</div><div class="wf-detail-date">${sStr} \u2192 ${eStr}</div></div></div>
+        <div class="wf-detail-right">
+          <span class="status-badge ${stCls}">${status}</span>
+          <button class="btn btn-ghost" style="padding:0.25rem 0.6rem;font-size:0.65rem"
+            onclick="openEditWorkflowItem('${_workflowProjectId}','${item._id}','${safeName}','${new Date(item.startDate).toISOString().split('T')[0]}','${new Date(item.endDate).toISOString().split('T')[0]}')">Edit</button>
+        </div></div>`;
+    }).join('');
+    detailsHTML = `<div class="wf-section-title" style="margin-top:1.5rem">Saved Workflow</div><div class="wf-details-list">${rows}</div>`;
+  }
 
-  // Remove any existing modal
-  document.getElementById('clientCalendarModal')?.remove();
-
+  document.getElementById('workflowCalendarModal')?.remove();
   const modal = document.createElement('div');
-  modal.id = 'clientCalendarModal';
+  modal.id = 'workflowCalendarModal';
   modal.className = 'admin-modal';
   modal.innerHTML = `
-    <div class="modal-backdrop" onclick="document.getElementById('clientCalendarModal').remove()"></div>
-    <div class="cal-modal-box">
-      <!-- Header -->
+    <div class="modal-backdrop" onclick="document.getElementById('workflowCalendarModal').remove()"></div>
+    <div class="wf-modal-box">
       <div class="cal-modal-header">
-        <div class="cal-modal-title">
-          <h3>${clientName}</h3>
-          <span class="cal-modal-sub">${dateLabel} &nbsp;·&nbsp; 11-Day Workflow</span>
-        </div>
-        <button class="cal-close-btn" onclick="document.getElementById('clientCalendarModal').remove()">✕</button>
+        <div class="cal-modal-title"><h3>${client.name || 'Client'}</h3><span class="cal-modal-sub">Workflow Calendar</span></div>
+        <button class="cal-close-btn" onclick="document.getElementById('workflowCalendarModal').remove()">\u2715</button>
       </div>
-
-      <!-- Status banner -->
-      ${statusBanner}
-
-      <!-- Month heading -->
-      <div class="cal-month-heading">
-        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      <div class="wf-section-title">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         ${monthName}
       </div>
-
-      <!-- Calendar grid -->
-      ${calendarHTML}
-
-      <!-- Legend -->
-      <div class="cal-legend">
-        ${legendItems}
+      <div id="wf_admin_calendar">${calHTML}</div>
+      <div class="cal-legend" style="margin:0.5rem 1.25rem 1rem">${legendHTML}</div>
+      <div class="wf-section-title" style="margin-top:1.25rem">Assign Workflow Tasks</div>
+      <div class="wf-builder-hdr"><span>Work Type</span><span>Start Date</span><span>End Date</span><span></span></div>
+      <div id="wf_rows_container" class="wf-rows-container"></div>
+      <button type="button" class="wf-add-first-btn" onclick="addWorkflowRow(document.getElementById('wf_rows_container'))">+ Add Work Row</button>
+      ${detailsHTML}
+      <div class="wf-modal-footer">
+        <button class="btn btn-ghost" onclick="document.getElementById('workflowCalendarModal').remove()">Cancel</button>
+        <button class="btn btn-gold" id="wf_save_btn" onclick="saveWorkflow('${_workflowProjectId}')">Update Workflow</button>
       </div>
     </div>`;
+  document.body.appendChild(modal);
 
+  const container = document.getElementById('wf_rows_container');
+  if (workflowItems.length > 0) {
+    workflowItems.forEach(item => {
+      const s = new Date(item.startDate).toISOString().split('T')[0];
+      const e = new Date(item.endDate).toISOString().split('T')[0];
+      addWorkflowRow(container, item.workName, s, e);
+    });
+  } else {
+    addWorkflowRow(container); // start with one empty row
+  }
+}
+
+async function saveWorkflow(projectId) {
+  const container = document.getElementById('wf_rows_container');
+  if (!container) return;
+  const rows = container.querySelectorAll('.wf-row');
+  const workflowCalendar = [];
+  let hasPartial = false;
+  rows.forEach(row => {
+    const work  = row.querySelector('.wf-work')?.value;
+    const start = row.querySelector('.wf-start')?.value;
+    const end   = row.querySelector('.wf-end')?.value;
+    if (work && start && end) {
+      workflowCalendar.push({ workName: work, startDate: start, endDate: end });
+    } else if (work || start || end) {
+      hasPartial = true;
+    }
+  });
+  if (hasPartial) { showToast('\u2717 Please complete all fields in each row.', 'error'); return; }
+  if (workflowCalendar.length === 0) { showToast('\u2717 Add at least one workflow task.', 'error'); return; }
+  const saveBtn = document.getElementById('wf_save_btn');
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving\u2026'; }
+  try {
+    await API.post(`/admin/projects/${projectId}/workflow`, { workflowCalendar });
+    showToast('\u2713 Workflow saved successfully!', 'success');
+    document.getElementById('workflowCalendarModal')?.remove();
+    loadClients();
+  } catch (err) {
+    if (err.message?.includes('401')) { Auth.logout(); return; }
+    showToast(`\u2717 ${err.message || 'Failed to save workflow'}`, 'error');
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Update Workflow'; }
+  }
+}
+
+function openEditWorkflowItem(projectId, itemId, workName, startDate, endDate) {
+  document.getElementById('editWorkflowModal')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'editWorkflowModal';
+  modal.className = 'admin-modal';
+  modal.innerHTML = `
+    <div class="modal-backdrop" onclick="document.getElementById('editWorkflowModal').remove()"></div>
+    <div class="modal-box" style="max-width:480px">
+      <div class="modal-header"><h3>Edit Workflow Item</h3><button onclick="document.getElementById('editWorkflowModal').remove()">\u2715</button></div>
+      <form class="modal-form" onsubmit="submitEditWorkflow(event,'${projectId}','${itemId}')">
+        <div class="form-group"><label class="form-label">Work Type</label>
+          <select class="form-input" id="ewf_work">
+            <option value="">— Select Work —</option>
+            ${_buildWorkOptions(workName)}
+          </select></div>
+        <div class="form-group"><label class="form-label">Start Date</label>
+          <input type="date" class="form-input" id="ewf_start" value="${startDate}" required /></div>
+        <div class="form-group"><label class="form-label">End Date</label>
+          <input type="date" class="form-input" id="ewf_end" value="${endDate}" required /></div>
+        <button type="submit" class="btn btn-gold" style="width:100%;justify-content:center;margin-top:0.5rem">Save Changes</button>
+      </form>
+    </div>`;
   document.body.appendChild(modal);
 }
+
+async function submitEditWorkflow(e, projectId, itemId) {
+  e.preventDefault();
+  const workName  = document.getElementById('ewf_work')?.value;
+  const startDate = document.getElementById('ewf_start')?.value;
+  const endDate   = document.getElementById('ewf_end')?.value;
+  if (!workName || !startDate || !endDate) { showToast('\u2717 All fields are required.', 'error'); return; }
+  const btn = e.target.querySelector('button[type="submit"]');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving\u2026'; }
+  try {
+    await API.put(`/admin/projects/${projectId}/workflow/${itemId}`, { workName, startDate, endDate });
+    showToast('\u2713 Workflow item updated!', 'success');
+    document.getElementById('editWorkflowModal')?.remove();
+    // Re-open the main modal with fresh data
+    const clients = await API.get('/admin/clients');
+    const client  = clients.find(c => c.projectId && (String(c.projectId._id || c.projectId) === String(projectId)));
+    if (client) openWorkflowCalendarModal(client);
+  } catch (err) {
+    if (err.message?.includes('401')) { Auth.logout(); return; }
+    showToast(`\u2717 ${err.message || 'Failed to update item'}`, 'error');
+    if (btn) { btn.disabled = false; btn.textContent = 'Save Changes'; }
+  }
+}
+
+// ── POPULATE CLIENT DROPDOWN (for Create Project modal) ─────────
+
+
+
 
 
 // ── POPULATE CLIENT DROPDOWN (for Create Project modal) ─────────

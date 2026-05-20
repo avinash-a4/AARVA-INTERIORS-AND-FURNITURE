@@ -438,14 +438,163 @@ function showPanel(id) {
   document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
   document.getElementById('panel-' + id)?.classList.add('active');
   document.getElementById('nav-' + id)?.classList.add('active');
-  const titles = { overview:'Overview', designs:'Designs', timeline:'Timeline', payments:'Payments', queries:'Raise a Query' };
+  const titles = { overview:'Overview', designs:'Designs', timeline:'Timeline', workflow:'Workflow', payments:'Payments', queries:'Raise a Query' };
   document.getElementById('dashPageTitle').textContent = titles[id] || id;
   if (id === 'payments') { loadPayments(); loadProjectData(); }
   if (id === 'designs')  loadProjectData();
   if (id === 'queries')  loadMyQueries();
+  if (id === 'workflow') loadWorkflow();
 }
 
 // Mobile sidebar
 function toggleSidebar() {
   document.getElementById('sidebar').classList.toggle('mobile-open');
+}
+
+// ── CLIENT WORKFLOW CALENDAR ────────────────────────────────
+const CLIENT_WORK_COLORS = {
+  'Ceiling Work – Framing': { dot: '#C6A969', bg: 'rgba(198,169,105,0.22)', border: '#C6A969' },
+  'Procure Wires':          { dot: '#64B4FF', bg: 'rgba(100,180,255,0.18)', border: '#64B4FF' },
+  'Sheet Fixing':           { dot: '#9B59B6', bg: 'rgba(155,89,182,0.18)',  border: '#9B59B6' },
+  'Finishing & Cleaning':   { dot: '#78C88C', bg: 'rgba(120,200,140,0.18)', border: '#78C88C' },
+  'Putty Paint':            { dot: '#FFA050', bg: 'rgba(255,160,80,0.18)',  border: '#FFA050' },
+  'Interior Work Starts':   { dot: '#50DCC8', bg: 'rgba(80,220,200,0.18)', border: '#50DCC8' },
+};
+
+function clientComputeStatus(startDate, endDate) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const s = new Date(startDate); s.setHours(0,0,0,0);
+  const e = new Date(endDate);   e.setHours(0,0,0,0);
+  if (today < s) return 'Upcoming';
+  if (today > e) return 'Completed';
+  return 'Active';
+}
+
+function clientGenerateCalendar(refDate, workflowItems) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const year  = refDate.getFullYear();
+  const month = refDate.getMonth();
+  const firstDay  = new Date(year, month, 1);
+  const lastDay   = new Date(year, month + 1, 0);
+  const startDow  = firstDay.getDay();
+  const totalDays = lastDay.getDate();
+  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const headerHTML = days.map(d => `<div class="cal-grid-hdr">${d}</div>`).join('');
+  let cells = '';
+  for (let i = 0; i < startDow; i++) cells += '<div class="cal-cell cal-cell--empty"></div>';
+  for (let d = 1; d <= totalDays; d++) {
+    const cellDate = new Date(year, month, d); cellDate.setHours(0,0,0,0);
+    const isToday = cellDate.getTime() === today.getTime();
+    const isPast  = cellDate < today;
+    let matchItem = null;
+    for (const item of workflowItems) {
+      const s = new Date(item.startDate); s.setHours(0,0,0,0);
+      const e = new Date(item.endDate);   e.setHours(0,0,0,0);
+      if (cellDate >= s && cellDate <= e) { matchItem = item; break; }
+    }
+    const col = matchItem ? (CLIENT_WORK_COLORS[matchItem.workName] || null) : null;
+    let dotHTML = '';
+    if (matchItem && col) {
+      const short = matchItem.workName.split('–')[0].trim();
+      dotHTML = `<span class="cal-dot" style="background:${col.dot}"></span><span class="cal-task-label" style="color:${col.dot}">${short}</span>`;
+    }
+    const todayClass = isToday ? ' cal-cell--today' : '';
+    const pastClass  = isPast  ? ' cal-cell--past'  : '';
+    const taskClass  = matchItem ? ' cal-cell--task' : '';
+    const cellStyle  = (matchItem && col) ? `style="border-color:${col.border};background:${col.bg};"` : '';
+    const status     = matchItem ? clientComputeStatus(matchItem.startDate, matchItem.endDate) : '';
+    const tooltip    = matchItem
+      ? `<div class="cal-tooltip"><strong>${matchItem.workName}</strong><br><span>${status}</span></div>`
+      : '';
+    cells += `<div class="cal-cell${todayClass}${pastClass}${taskClass}" ${cellStyle}><span class="cal-num">${d}</span>${isToday ? '<span class="cal-today-badge">Today</span>' : ''}<div class="cal-cell-body">${dotHTML}</div>${tooltip}</div>`;
+  }
+  return `<div class="cal-grid-wrap"><div class="cal-grid">${headerHTML}${cells}</div></div>`;
+}
+
+let _wfItems   = [];
+let _wfViewDate = new Date();
+
+async function loadWorkflow() {
+  try {
+    const project = await API.get('/client/project');
+    _wfItems = project?.workflowCalendar || [];
+  } catch (err) {
+    console.warn('Workflow load error:', err.message);
+    _wfItems = [];
+  }
+
+  // Default month: earliest task month or current
+  if (_wfItems.length > 0) {
+    _wfViewDate = _wfItems.reduce((min, item) => {
+      const d = new Date(item.startDate);
+      return d < min ? d : min;
+    }, new Date(_wfItems[0].startDate));
+  } else {
+    _wfViewDate = new Date();
+  }
+
+  renderWorkflowPanel();
+}
+
+function renderWorkflowPanel() {
+  const calEl     = document.getElementById('client_wf_calendar');
+  const legendEl  = document.getElementById('client_wf_legend');
+  const detailsEl = document.getElementById('client_wf_details');
+  const monthEl   = document.getElementById('wf_month_label');
+  const badge     = document.getElementById('wf_status_badge');
+
+  if (monthEl) monthEl.textContent = _wfViewDate.toLocaleDateString('en-IN', { month:'long', year:'numeric' });
+
+  if (!_wfItems.length) {
+    if (calEl)     calEl.innerHTML = '<p style="color:var(--text-muted);font-size:0.875rem;padding:1rem 0">No workflow tasks assigned yet.</p>';
+    if (legendEl)  legendEl.innerHTML = '';
+    if (detailsEl) detailsEl.innerHTML = '<p style="color:var(--text-muted);font-size:0.875rem">No workflow assigned yet. Check back once your AARAV team sets up the schedule.</p>';
+    if (badge)     badge.style.display = 'none';
+    return;
+  }
+
+  // Calendar
+  if (calEl) calEl.innerHTML = clientGenerateCalendar(_wfViewDate, _wfItems);
+
+  // Legend
+  if (legendEl) {
+    const usedColors = new Set(_wfItems.map(i => i.workName));
+    legendEl.innerHTML = [...usedColors].map(name => {
+      const col = CLIENT_WORK_COLORS[name];
+      return col ? `<div class="cal-legend-item"><span class="cal-legend-dot" style="background:${col.dot}"></span>${name}</div>` : '';
+    }).join('');
+  }
+
+  // Details list
+  if (detailsEl) {
+    const activeCount = _wfItems.filter(i => clientComputeStatus(i.startDate, i.endDate) === 'Active').length;
+    if (badge) {
+      badge.textContent = activeCount > 0 ? `${activeCount} Active` : 'All Scheduled';
+      badge.className   = `status-badge ${activeCount > 0 ? 'status-active' : 'status-done'}`;
+      badge.style.display = '';
+    }
+
+    detailsEl.innerHTML = _wfItems.map(item => {
+      const status = clientComputeStatus(item.startDate, item.endDate);
+      const col    = CLIENT_WORK_COLORS[item.workName];
+      const dotSt  = col ? `background:${col.dot}` : 'background:#888';
+      const stCls  = status === 'Active' ? 'status-active' : status === 'Completed' ? 'status-done' : '';
+      const sStr   = new Date(item.startDate).toLocaleDateString('en-IN',{day:'numeric',month:'short'});
+      const eStr   = new Date(item.endDate).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
+      return `<div class="wf-detail-card" style="margin-bottom:0.5rem">
+        <div class="wf-detail-left"><span class="wf-detail-dot" style="${dotSt}"></span>
+          <div><div class="wf-detail-name">${item.workName}</div><div class="wf-detail-date">${sStr} &#8594; ${eStr}</div></div></div>
+        <div class="wf-detail-right"><span class="status-badge ${stCls}">${status}</span></div>
+      </div>`;
+    }).join('');
+  }
+}
+
+function wfPrevMonth() {
+  _wfViewDate = new Date(_wfViewDate.getFullYear(), _wfViewDate.getMonth() - 1, 1);
+  renderWorkflowPanel();
+}
+function wfNextMonth() {
+  _wfViewDate = new Date(_wfViewDate.getFullYear(), _wfViewDate.getMonth() + 1, 1);
+  renderWorkflowPanel();
 }
