@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loadProjects();
   loadAdminPayments();
   loadQueries();
+  loadCollections();   // pre-load so stats are ready
 });
 
 // Panel switching
@@ -19,11 +20,12 @@ function showAdminPanel(id) {
   document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
   document.getElementById('panel-' + id)?.classList.add('active');
   document.getElementById('anav-' + id)?.classList.add('active');
-  const titles = { clients:'Clients', projects:'Projects', 'designs-upload':'Upload Designs', 'payments-admin':'Payments', queries:'Queries', 'estimator-config':'Estimator Config' };
+  const titles = { clients:'Clients', projects:'Projects', 'designs-upload':'Upload Designs', 'payments-admin':'Payments', collections:'Collections', queries:'Queries', 'estimator-config':'Estimator Config' };
   document.getElementById('adminPageTitle').textContent = titles[id] || id;
   if (id === 'designs-upload')  loadDesignProjects();
   if (id === 'payments-admin')  loadAdminPayments();
   if (id === 'queries')         loadQueries();
+  if (id === 'collections')     loadCollections();
 }
 
 function toggleSidebar() { document.getElementById('sidebar').classList.toggle('mobile-open'); }
@@ -948,5 +950,280 @@ async function resolveQuery(id) {
   } catch (err) {
     if (err.message?.includes('401')) { Auth.logout(); return; }
     showToast(`\u2717 ${err.message || 'Failed to resolve query'}`, 'error');
+  }
+}
+
+// ── COLLECTION PLAN ENGINE ──────────────────────────────────
+
+let _collectionPlans = [];
+
+async function loadCollections() {
+  try {
+    _collectionPlans = await API.get('/admin/collection-plans');
+    renderCollectionsPanel(_collectionPlans);
+  } catch (err) {
+    if (err.message?.includes('401')) { Auth.logout(); return; }
+    console.warn('Collections load error:', err.message);
+  }
+}
+
+function renderCollectionsPanel(plans) {
+  // Stats
+  let pendingCount = 0, approvedCount = 0;
+  plans.forEach(p => p.generatedCollections.forEach(c => {
+    if (c.status === 'pendingApproval') pendingCount++;
+    if (c.status === 'approved') approvedCount++;
+  }));
+  const totalEl   = document.getElementById('col_total_plans');
+  const pendEl    = document.getElementById('col_pending_count');
+  const approvEl  = document.getElementById('col_approved_count');
+  if (totalEl)  totalEl.textContent  = plans.filter(p => p.status === 'active').length;
+  if (pendEl)   pendEl.textContent   = pendingCount;
+  if (approvEl) approvEl.textContent = approvedCount;
+
+  // Pending Approval table
+  const pendBody = document.getElementById('col_pending_body');
+  const pendRows = [];
+  plans.forEach(plan => {
+    plan.generatedCollections.forEach(col => {
+      if (col.status !== 'pendingApproval') return;
+      const cName  = plan.clientId?.name  || col.clientNameSnapshot  || '—';
+      const pTitle = plan.projectId?.title || col.projectTitleSnapshot || '—';
+      const dateStr = new Date(col.collectionDate).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' });
+      const proofHtml = col.proofImage?.url
+        ? `<a href="${col.proofImage.url}" target="_blank" class="btn btn-ghost" style="padding:0.2rem 0.5rem;font-size:0.65rem">View Proof</a>`
+        : '<span style="color:var(--text-muted)">None</span>';
+      const typeLabel = plan.type === 'weekly' ? 'Weekly' : `Phase${plan.phaseName ? ': ' + plan.phaseName : ''}`;
+      pendRows.push(`<tr>
+        <td>${cName}</td><td>${pTitle}</td>
+        <td>${dateStr}</td>
+        <td class="text-gold">₹ ${col.amount.toLocaleString('en-IN')}</td>
+        <td><span class="status-badge">${typeLabel}</span></td>
+        <td style="font-size:0.78rem">${col.reason || plan.reason || '—'}</td>
+        <td>${proofHtml}</td>
+        <td style="text-align:center">${col.attemptCount || 0}</td>
+        <td style="display:flex;gap:0.3rem;flex-wrap:wrap">
+          <button class="btn btn-gold" style="padding:0.25rem 0.6rem;font-size:0.65rem" onclick="approveCollection('${plan._id}','${col._id}')">Approve</button>
+          <button class="btn btn-ghost" style="padding:0.25rem 0.6rem;font-size:0.65rem;color:#ff6b6b;border-color:#ff6b6b" onclick="rejectCollection('${plan._id}','${col._id}')">Reject</button>
+          <button class="btn btn-ghost" style="padding:0.25rem 0.6rem;font-size:0.65rem" onclick="markNeedProof('${plan._id}','${col._id}')">Need Proof</button>
+        </td></tr>`);
+    });
+  });
+  if (pendBody) pendBody.innerHTML = pendRows.length ? pendRows.join('') : '<tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:2rem">No collections pending approval</td></tr>';
+
+  // All plans table
+  const plansBody = document.getElementById('col_plans_body');
+  if (plansBody) {
+    plansBody.innerHTML = plans.length ? plans.map(plan => {
+      const cName   = plan.clientId?.name  || plan.clientNameSnapshot  || '—';
+      const pTitle  = plan.projectId?.title || plan.projectTitleSnapshot || '—';
+      const typeLabel = plan.type === 'weekly' ? 'Weekly' : `Phase${plan.phaseName ? ': ' + plan.phaseName : ''}`;
+      const sDate   = new Date(plan.startDate).toLocaleDateString('en-IN', { day:'numeric', month:'short' });
+      const eDate   = new Date(plan.endDate).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' });
+      const total   = plan.generatedCollections.length;
+      const done    = plan.generatedCollections.filter(c => c.status === 'approved').length;
+      const stCls   = plan.status === 'active' ? 'status-active' : 'status-done';
+      return `<tr>
+        <td>${cName}</td><td>${pTitle}</td>
+        <td><span class="status-badge">${typeLabel}</span></td>
+        <td class="text-gold">₹ ${(plan.amount||0).toLocaleString('en-IN')}</td>
+        <td>${done} / ${total}</td>
+        <td style="font-size:0.78rem">${sDate} → ${eDate}</td>
+        <td><span class="status-badge ${stCls}">${plan.status}</span></td>
+        <td><button class="btn btn-ghost" style="padding:0.25rem 0.6rem;font-size:0.65rem" onclick="expandPlanCollections('${plan._id}')">View</button></td>
+      </tr>`;
+    }).join('') : '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:2rem">No collection plans yet</td></tr>';
+  }
+}
+
+function openCreateCollectionModal() {
+  document.getElementById('createCollectionModal')?.remove();
+  // Populate client+project dropdown
+  const projectOptions = _collectionPlans.length ? '' :  '';
+  const allClients = _clientDataMap ? [..._clientDataMap.values()] : [];
+  const clientOptions = allClients
+    .filter(c => c.projectId)
+    .map(c => `<option value="${c.projectId._id || c.projectId}" data-client="${c._id}">${c.name} — ${c.projectId?.title || 'Project'}</option>`)
+    .join('');
+
+  const modal = document.createElement('div');
+  modal.id = 'createCollectionModal';
+  modal.className = 'admin-modal';
+  modal.innerHTML = `
+    <div class="modal-backdrop" onclick="document.getElementById('createCollectionModal').remove()"></div>
+    <div class="modal-box" style="max-width:560px;max-height:92vh;overflow-y:auto">
+      <div class="modal-header"><h3>Create Collection Plan</h3><button onclick="document.getElementById('createCollectionModal').remove()">✕</button></div>
+      <form class="modal-form" onsubmit="submitCreateCollection(event)">
+        <div class="form-group"><label class="form-label">Select Client + Project</label>
+          <select class="form-input" id="cc_project" required>
+            <option value="">— Select Project —</option>
+            ${clientOptions || '<option disabled>No clients with projects found</option>'}
+          </select></div>
+        <div class="form-group"><label class="form-label">Collection Type</label>
+          <select class="form-input" id="cc_type" onchange="toggleCollectionTypeFields()">
+            <option value="weekly">Weekly Collection</option>
+            <option value="phase">Phase Collection</option>
+          </select></div>
+        <div id="cc_phase_fields" style="display:none">
+          <div class="form-group"><label class="form-label">Phase Name</label>
+            <input class="form-input" id="cc_phase_name" placeholder="e.g. Ceiling Work" /></div>
+          <div class="form-group"><label class="form-label">Interval (Days)</label>
+            <input type="number" class="form-input" id="cc_interval" value="7" min="1" placeholder="e.g. 5" /></div>
+        </div>
+        <div class="form-group"><label class="form-label">Start Date</label>
+          <input type="date" class="form-input" id="cc_start" required /></div>
+        <div class="form-group"><label class="form-label">End Date</label>
+          <input type="date" class="form-input" id="cc_end" required /></div>
+        <div class="form-group"><label class="form-label">Amount per Collection (₹)</label>
+          <input type="number" class="form-input" id="cc_amount" placeholder="e.g. 75000" min="1" required /></div>
+        <div class="form-group"><label class="form-label">Reason</label>
+          <input class="form-input" id="cc_reason" placeholder="e.g. Material Procurement" /></div>
+        <div class="form-group"><label class="form-label">Link to Workflow Item (optional)</label>
+          <input class="form-input" id="cc_workflow" placeholder="Workflow item name or ID" /></div>
+        <button type="submit" class="btn btn-gold" style="width:100%;justify-content:center;margin-top:0.5rem" id="cc_submit_btn">Generate Plan</button>
+      </form>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+function toggleCollectionTypeFields() {
+  const type = document.getElementById('cc_type')?.value;
+  const phaseFields = document.getElementById('cc_phase_fields');
+  if (phaseFields) phaseFields.style.display = type === 'phase' ? 'block' : 'none';
+}
+
+async function submitCreateCollection(e) {
+  e.preventDefault();
+  const projectEl = document.getElementById('cc_project');
+  const projectId = projectEl?.value;
+  const clientId  = projectEl?.options[projectEl.selectedIndex]?.dataset?.client;
+  const type      = document.getElementById('cc_type')?.value;
+  const startDate = document.getElementById('cc_start')?.value;
+  const endDate   = document.getElementById('cc_end')?.value;
+  const amount    = document.getElementById('cc_amount')?.value;
+  const reason    = document.getElementById('cc_reason')?.value;
+  const phaseName    = document.getElementById('cc_phase_name')?.value;
+  const intervalDays = document.getElementById('cc_interval')?.value;
+  const workflowItemId = document.getElementById('cc_workflow')?.value;
+
+  if (!projectId || !clientId || !startDate || !endDate || !amount) {
+    showToast('\u2717 All required fields must be filled.', 'error'); return;
+  }
+  const btn = document.getElementById('cc_submit_btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Generating\u2026'; }
+  try {
+    const result = await API.post('/admin/collection-plans', {
+      projectId, clientId, type, startDate, endDate,
+      amount: Number(amount), reason,
+      phaseName, intervalDays: Number(intervalDays) || 7,
+      workflowItemId,
+    });
+    const count = result.plan?.generatedCollections?.length || 0;
+    showToast(`\u2713 Plan created — ${count} collections generated!`, 'success');
+    document.getElementById('createCollectionModal')?.remove();
+    loadCollections();
+  } catch (err) {
+    if (err.message?.includes('401')) { Auth.logout(); return; }
+    showToast(`\u2717 ${err.message || 'Failed to create plan'}`, 'error');
+    if (btn) { btn.disabled = false; btn.textContent = 'Generate Plan'; }
+  }
+}
+
+async function approveCollection(planId, colId) {
+  if (!confirm('Approve this collection? A Payment entry will be auto-created.')) return;
+  try {
+    await API.req('PATCH', `/admin/collection-plans/${planId}/collections/${colId}/approve`);
+    showToast('\u2713 Approved — Payment created and amountPaid updated!', 'success');
+    loadCollections();
+  } catch (err) {
+    if (err.message?.includes('401')) { Auth.logout(); return; }
+    showToast(`\u2717 ${err.message || 'Approval failed'}`, 'error');
+  }
+}
+
+async function rejectCollection(planId, colId) {
+  const reason = prompt('Reason for rejection:');
+  if (reason === null) return;  // cancelled
+  try {
+    await API.req('PATCH', `/admin/collection-plans/${planId}/collections/${colId}/reject`, { reason });
+    showToast('\u2713 Collection rejected', 'success');
+    loadCollections();
+  } catch (err) {
+    if (err.message?.includes('401')) { Auth.logout(); return; }
+    showToast(`\u2717 ${err.message || 'Reject failed'}`, 'error');
+  }
+}
+
+async function reopenCollection(planId, colId) {
+  if (!confirm('Reopen this approved entry for editing?')) return;
+  try {
+    await API.req('PATCH', `/admin/collection-plans/${planId}/collections/${colId}/reopen`);
+    showToast('\u2713 Entry reopened — edit and re-approve.', 'success');
+    loadCollections();
+  } catch (err) {
+    if (err.message?.includes('401')) { Auth.logout(); return; }
+    showToast(`\u2717 ${err.message || 'Reopen failed'}`, 'error');
+  }
+}
+
+async function markNeedProof(planId, colId) {
+  const reason = prompt('Message to client (why proof is needed):') || 'Please upload a valid proof of payment.';
+  try {
+    await API.req('PATCH', `/admin/collection-plans/${planId}/collections/${colId}/need-proof`, { reason });
+    showToast('\u2713 Marked as needing proof', 'success');
+    loadCollections();
+  } catch (err) {
+    if (err.message?.includes('401')) { Auth.logout(); return; }
+    showToast(`\u2717 ${err.message || 'Failed'}`, 'error');
+  }
+}
+
+async function expandPlanCollections(planId) {
+  try {
+    const plan = await API.get(`/admin/collection-plans/${planId}`);
+    document.getElementById('planDetailModal')?.remove();
+    const cName  = plan.clientId?.name  || plan.clientNameSnapshot  || '—';
+    const pTitle = plan.projectId?.title || plan.projectTitleSnapshot || '—';
+    const rows = plan.generatedCollections.map(col => {
+      const stCls = col.status === 'approved' ? 'status-done' : col.status === 'pendingApproval' ? 'status-active' : col.status === 'rejected' ? '' : '';
+      const stColor = col.status === 'rejected' ? 'color:#ff6b6b;border-color:#ff6b6b' : '';
+      const dateStr = new Date(col.collectionDate).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' });
+      const proofHtml = col.proofImage?.url
+        ? `<a href="${col.proofImage.url}" target="_blank" style="color:var(--gold)">View</a>`
+        : '—';
+      const actionsHtml = col.status === 'pendingApproval'
+        ? `<button class="btn btn-gold" style="padding:0.2rem 0.5rem;font-size:0.65rem" onclick="approveCollection('${plan._id}','${col._id}');document.getElementById('planDetailModal')?.remove()">Approve</button>
+           <button class="btn btn-ghost" style="padding:0.2rem 0.5rem;font-size:0.65rem;color:#ff6b6b;border-color:#ff6b6b" onclick="rejectCollection('${plan._id}','${col._id}');document.getElementById('planDetailModal')?.remove()">Reject</button>`
+        : col.status === 'approved' && col.isLocked
+        ? `<button class="btn btn-ghost" style="padding:0.2rem 0.5rem;font-size:0.65rem" onclick="reopenCollection('${plan._id}','${col._id}');document.getElementById('planDetailModal')?.remove()">Reopen</button>`
+        : '—';
+      return `<tr>
+        <td>${dateStr}</td>
+        <td class="text-gold">&#8377; ${col.amount.toLocaleString('en-IN')}</td>
+        <td style="font-size:0.78rem">${col.reason || '—'}</td>
+        <td><span class="status-badge ${stCls}" style="${stColor}">${col.status}</span></td>
+        <td>${proofHtml}</td><td>${col.attemptCount||0}</td>
+        <td>${actionsHtml}</td></tr>`;
+    }).join('');
+    const modal = document.createElement('div');
+    modal.id = 'planDetailModal';
+    modal.className = 'admin-modal';
+    modal.innerHTML = `
+      <div class="modal-backdrop" onclick="document.getElementById('planDetailModal').remove()"></div>
+      <div class="wf-modal-box">
+        <div class="cal-modal-header">
+          <div class="cal-modal-title"><h3>${cName} — ${pTitle}</h3><span class="cal-modal-sub">${plan.type === 'weekly' ? 'Weekly' : 'Phase'} Collection Plan</span></div>
+          <button class="cal-close-btn" onclick="document.getElementById('planDetailModal').remove()">✕</button>
+        </div>
+        <div style="padding:1rem 1.25rem;overflow-x:auto">
+          <table class="pay-table">
+            <thead><tr><th>Date</th><th>Amount</th><th>Reason</th><th>Status</th><th>Proof</th><th>Attempts</th><th>Actions</th></tr></thead>
+            <tbody>${rows || '<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--text-muted)">No collections</td></tr>'}</tbody>
+          </table>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+  } catch (err) {
+    showToast(`\u2717 ${err.message || 'Failed to load plan'}`, 'error');
   }
 }

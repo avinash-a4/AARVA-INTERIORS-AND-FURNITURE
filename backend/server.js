@@ -24,6 +24,12 @@ app.use('/api/client',    require('./routes/client'));
 app.use('/api/estimator', require('./routes/estimator'));
 app.use('/api/contact',   require('./routes/contact'));
 
+// ── Collection Plan Engine (extends admin + client without modifying them) ──
+const collectionPlanRoutes = require('./routes/collectionPlans');
+app.use('/api/admin/collection-plans', collectionPlanRoutes.admin);
+app.use('/api/client/collections',     collectionPlanRoutes.client);
+
+
 // ✅ Simple root route (IMPORTANT)
 app.get('/', (req, res) => {
   res.send('AARAV BACKEND RUNNING 🚀');

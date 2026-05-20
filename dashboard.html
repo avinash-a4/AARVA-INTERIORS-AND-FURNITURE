@@ -35,6 +35,10 @@
       <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
       Workflow
     </button>
+    <button class="sidebar-link" onclick="showPanel('collections')" id="nav-collections">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+      Collections
+    </button>
     <button class="sidebar-link" onclick="showPanel('payments')" id="nav-payments">
       <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
       Payments
@@ -233,6 +237,28 @@
       <div class="dash-card-header"><h3 class="dash-card-title">Workflow Details</h3></div>
       <div class="dash-card-body" id="client_wf_details">
         <p style="color:var(--text-muted);font-size:0.875rem">No workflow assigned yet. Check back once your AARAV team sets up the schedule.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ──── COLLECTIONS PANEL ──── -->
+  <div class="panel" id="panel-collections">
+    <div class="dash-card mb-3">
+      <div class="dash-card-header">
+        <h3 class="dash-card-title">My Collections</h3>
+        <span class="status-badge status-active" id="col_client_summary" style="display:none"></span>
+      </div>
+      <div class="dash-card-body">
+        <!-- Stats row -->
+        <div class="panel-grid-3 mb-4" id="col_client_stats" style="display:none">
+          <div class="stat-card"><div class="stat-card-val text-gold" id="col_client_upcoming">0</div><div class="stat-card-label">Upcoming</div></div>
+          <div class="stat-card"><div class="stat-card-val" style="color:#FFA050" id="col_client_pending">0</div><div class="stat-card-label">Pending Approval</div></div>
+          <div class="stat-card"><div class="stat-card-val" style="color:#78C88C" id="col_client_approved">0</div><div class="stat-card-label">Approved</div></div>
+        </div>
+        <!-- Collections list -->
+        <div id="col_client_list">
+          <p style="color:var(--text-muted);font-size:0.875rem">No collection schedules assigned yet. Your AARAV team will set these up soon.</p>
+        </div>
       </div>
     </div>
   </div>

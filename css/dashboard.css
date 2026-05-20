@@ -298,3 +298,81 @@
   .wf-detail-card { flex-direction:column; align-items:flex-start; }
 }
 
+/* ══════════════════════════════════════════════════
+   CLIENT COLLECTION PLAN ENGINE — Card styles
+   ══════════════════════════════════════════════════ */
+
+/* Collection card */
+.col-client-card {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto;
+  gap: 0.5rem 1rem;
+  padding: 1rem 1.1rem;
+  border-radius: 12px;
+  border: 1.5px solid rgba(255,255,255,0.07);
+  background: rgba(255,255,255,0.025);
+  margin-bottom: 0.75rem;
+  transition: transform 0.18s, box-shadow 0.18s;
+}
+.col-client-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.25); }
+.col-card-left       { grid-column: 1; }
+.col-card-right      { grid-column: 2; display:flex; flex-direction:column; align-items:flex-end; gap:0.3rem; }
+.col-card-proof      { grid-column: 1 / -1; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 0.6rem; margin-top: 0.25rem; }
+
+/* Card field typography */
+.col-card-date   { font-size:0.72rem; color:var(--text-muted); font-weight:500; margin-bottom:0.15rem; }
+.col-card-type   { font-size:0.68rem; color:var(--gold); font-weight:700; letter-spacing:0.08em; text-transform:uppercase; margin-bottom:0.2rem; }
+.col-card-reason { font-size:0.82rem; font-weight:600; color:var(--white); }
+.col-card-amount { font-size:1.15rem; font-weight:700; color:var(--gold); font-family:var(--font-display); }
+
+/* Status variants — card border */
+.col-card-approved       { border-color: rgba(120,200,140,0.3);  background: rgba(120,200,140,0.03); }
+.col-card-pendingApproval { border-color: rgba(255,160,80,0.35);  background: rgba(255,160,80,0.04); }
+.col-card-rejected       { border-color: rgba(255,107,107,0.3);  background: rgba(255,107,107,0.03); }
+.col-card-dueToday       { border-color: rgba(198,169,105,0.55) !important; box-shadow: 0 0 0 2px rgba(198,169,105,0.15); }
+.col-card-overdue        { border-color: rgba(255,107,107,0.5);  background: rgba(255,107,107,0.04); }
+
+/* Status chip (inline inside card) */
+.col-status-chip { display:inline-block; font-size:0.65rem; font-weight:700; letter-spacing:0.08em; padding:0.2rem 0.55rem; border-radius:20px; border:1px solid; }
+.col-st-upcoming  { color:#C6A969; border-color:rgba(198,169,105,0.4); background:rgba(198,169,105,0.1); }
+.col-st-due       { color:#fff;    border-color:#C6A969;                background:#C6A969; }
+.col-st-overdue   { color:#ff6b6b; border-color:rgba(255,107,107,0.4); background:rgba(255,107,107,0.1); }
+.col-st-pending   { color:#FFA050; border-color:rgba(255,160,80,0.4);  background:rgba(255,160,80,0.1); }
+.col-st-approved  { color:#78C88C; border-color:rgba(120,200,140,0.4); background:rgba(120,200,140,0.1); }
+.col-st-rejected  { color:#ff6b6b; border-color:rgba(255,107,107,0.4); background:rgba(255,107,107,0.1); }
+
+/* Proof upload area */
+.col-upload-area { display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap; }
+.col-upload-btn {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  font-size: 0.72rem; font-weight: 600; padding: 0.35rem 0.8rem;
+  border: 1px solid var(--border-gold); border-radius: 20px;
+  color: var(--gold); cursor: pointer; transition: var(--transition-fast);
+  background: transparent; user-select: none;
+}
+.col-upload-btn:hover { background: var(--gold); color: var(--dark-navy); }
+.col-upload-hint { font-size: 0.65rem; color: var(--text-muted); }
+
+/* Pending Approval info bar */
+.col-proof-info {
+  display: flex; align-items: center; gap: 0.5rem;
+  font-size: 0.75rem; color: #FFA050; background: rgba(255,160,80,0.08);
+  padding: 0.4rem 0.75rem; border-radius: 8px;
+}
+
+/* Rejected section */
+.col-proof-rejected { display:flex; flex-direction:column; gap:0.5rem; }
+.col-rejection-reason { font-size:0.75rem; color:#ff6b6b; background:rgba(255,107,107,0.08); padding:0.35rem 0.75rem; border-radius:8px; }
+
+/* Approved */
+.col-proof-approved { display:flex; align-items:center; gap:0.4rem; font-size:0.75rem; color:#78C88C; }
+
+/* Upload status feedback text */
+.col-card-upload-status { font-size:0.72rem; margin-top:0.3rem; min-height:1.2em; }
+
+@media (max-width: 540px) {
+  .col-client-card { grid-template-columns: 1fr; }
+  .col-card-right  { flex-direction: row; align-items: center; justify-content: space-between; }
+  .col-card-amount { font-size: 1rem; }
+}

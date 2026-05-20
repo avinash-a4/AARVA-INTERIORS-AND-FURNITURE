@@ -36,6 +36,10 @@
       <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
       Payments
     </button>
+    <button class="sidebar-link" onclick="showAdminPanel('collections')" id="anav-collections">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+      Collections
+    </button>
     <button class="sidebar-link" onclick="showAdminPanel('queries')" id="anav-queries">
       <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
       Queries
@@ -171,6 +175,40 @@
         <table class="pay-table admin-table">
           <thead><tr><th>Client</th><th>Project</th><th>Amount</th><th>Type</th><th>Category</th><th>Mode</th><th>Date</th></tr></thead>
           <tbody id="adminPaymentsBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── COLLECTIONS PANEL ── -->
+  <div class="panel" id="panel-collections">
+    <div class="admin-header-row">
+      <h3 class="dash-card-title">Collection Plans</h3>
+      <button class="btn btn-gold" onclick="openCreateCollectionModal()">+ Create Plan</button>
+    </div>
+    <!-- Stats row -->
+    <div class="panel-grid-3 mt-3 mb-4">
+      <div class="stat-card"><div class="stat-card-val text-gold" id="col_total_plans">0</div><div class="stat-card-label">Active Plans</div></div>
+      <div class="stat-card"><div class="stat-card-val" style="color:#FFA050" id="col_pending_count">0</div><div class="stat-card-label">Pending Approval</div></div>
+      <div class="stat-card"><div class="stat-card-val" style="color:#78C88C" id="col_approved_count">0</div><div class="stat-card-label">Approved</div></div>
+    </div>
+    <!-- Pending approval section -->
+    <div class="dash-card mb-4">
+      <div class="dash-card-header"><h3 class="dash-card-title">Pending Approval</h3></div>
+      <div class="dash-card-body" style="padding:0">
+        <table class="pay-table admin-table">
+          <thead><tr><th>Client</th><th>Project</th><th>Date</th><th>Amount</th><th>Type</th><th>Reason</th><th>Proof</th><th>Attempts</th><th>Actions</th></tr></thead>
+          <tbody id="col_pending_body"><tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:2rem">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+    <!-- All plans table -->
+    <div class="dash-card">
+      <div class="dash-card-header"><h3 class="dash-card-title">All Collection Plans</h3></div>
+      <div class="dash-card-body" style="padding:0">
+        <table class="pay-table admin-table">
+          <thead><tr><th>Client</th><th>Project</th><th>Type</th><th>Amount/Collection</th><th>Collections</th><th>Period</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="col_plans_body"><tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:2rem">Loading…</td></tr></tbody>
         </table>
       </div>
     </div>

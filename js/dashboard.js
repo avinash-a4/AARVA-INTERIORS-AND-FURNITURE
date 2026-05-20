@@ -438,12 +438,13 @@ function showPanel(id) {
   document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
   document.getElementById('panel-' + id)?.classList.add('active');
   document.getElementById('nav-' + id)?.classList.add('active');
-  const titles = { overview:'Overview', designs:'Designs', timeline:'Timeline', workflow:'Workflow', payments:'Payments', queries:'Raise a Query' };
+  const titles = { overview:'Overview', designs:'Designs', timeline:'Timeline', workflow:'Workflow', collections:'Collections', payments:'Payments', queries:'Raise a Query' };
   document.getElementById('dashPageTitle').textContent = titles[id] || id;
-  if (id === 'payments') { loadPayments(); loadProjectData(); }
-  if (id === 'designs')  loadProjectData();
-  if (id === 'queries')  loadMyQueries();
-  if (id === 'workflow') loadWorkflow();
+  if (id === 'payments')    { loadPayments(); loadProjectData(); }
+  if (id === 'designs')     loadProjectData();
+  if (id === 'queries')     loadMyQueries();
+  if (id === 'workflow')    loadWorkflow();
+  if (id === 'collections') loadCollections();
 }
 
 // Mobile sidebar
@@ -597,4 +598,176 @@ function wfPrevMonth() {
 function wfNextMonth() {
   _wfViewDate = new Date(_wfViewDate.getFullYear(), _wfViewDate.getMonth() + 1, 1);
   renderWorkflowPanel();
+}
+
+// ── CLIENT COLLECTION PLAN ENGINE ─────────────────────────
+
+const COL_COLORS = {
+  Weekly: '#C6A969',
+  Phase:  '#64B4FF',
+};
+
+async function loadCollections() {
+  try {
+    const plans = await API.get('/client/collections');
+    renderClientCollections(plans);
+  } catch (err) {
+    console.warn('Collections load error:', err.message);
+  }
+}
+
+function computeClientCollectionStatus(col) {
+  // Status is stored in DB (tracks actions). Dynamic override for display only:
+  // If status is 'upcoming' but today >= collectionDate, show 'Due Today'.
+  if (col.status === 'upcoming') {
+    const today = new Date(); today.setHours(0,0,0,0);
+    const due   = new Date(col.collectionDate); due.setHours(0,0,0,0);
+    if (today.getTime() === due.getTime()) return 'dueToday';
+    if (today > due)                       return 'overdue';
+  }
+  return col.status; // 'upcoming', 'pendingApproval', 'approved', 'rejected'
+}
+
+function renderClientCollections(plans) {
+  const listEl     = document.getElementById('col_client_list');
+  const statsEl    = document.getElementById('col_client_stats');
+  const summaryEl  = document.getElementById('col_client_summary');
+  if (!listEl) return;
+
+  if (!plans || plans.length === 0) {
+    listEl.innerHTML = '<p style="color:var(--text-muted);font-size:0.875rem">No collection schedules assigned yet. Your AARAV team will set these up soon.</p>';
+    if (statsEl) statsEl.style.display = 'none';
+    return;
+  }
+
+  // Compute global stats
+  let upcoming = 0, pending = 0, approved = 0;
+  plans.forEach(plan => plan.generatedCollections.forEach(col => {
+    const s = computeClientCollectionStatus(col);
+    if (s === 'upcoming' || s === 'dueToday' || s === 'overdue') upcoming++;
+    if (s === 'pendingApproval') pending++;
+    if (s === 'approved') approved++;
+  }));
+  if (statsEl) {
+    statsEl.style.display = '';
+    const upEl = document.getElementById('col_client_upcoming');
+    const pEl  = document.getElementById('col_client_pending');
+    const aEl  = document.getElementById('col_client_approved');
+    if (upEl) upEl.textContent = upcoming;
+    if (pEl)  pEl.textContent  = pending;
+    if (aEl)  aEl.textContent  = approved;
+  }
+  if (summaryEl && pending > 0) {
+    summaryEl.style.display = '';
+    summaryEl.textContent   = `${pending} Pending Approval`;
+  }
+
+  // Build collection cards — sorted by date
+  const allCols = [];
+  plans.forEach(plan => {
+    plan.generatedCollections.forEach(col => {
+      allCols.push({ plan, col });
+    });
+  });
+  allCols.sort((a,b) => new Date(a.col.collectionDate) - new Date(b.col.collectionDate));
+
+  const cards = allCols.map(({ plan, col }) => {
+    const status   = computeClientCollectionStatus(col);
+    const dateStr  = new Date(col.collectionDate).toLocaleDateString('en-IN', { weekday:'short', day:'numeric', month:'short', year:'numeric' });
+    const typeLabel = plan.type === 'weekly' ? 'Weekly' : `Phase${plan.phaseName ? ': ' + plan.phaseName : ''}`;
+
+    // Status badge
+    const statusBadges = {
+      upcoming:       { cls: 'col-st-upcoming',  txt: 'Upcoming' },
+      dueToday:       { cls: 'col-st-due',       txt: 'Due Today' },
+      overdue:        { cls: 'col-st-overdue',   txt: 'Overdue' },
+      pendingApproval:{ cls: 'col-st-pending',   txt: 'Pending Approval' },
+      approved:       { cls: 'col-st-approved',  txt: 'Approved ✓' },
+      rejected:       { cls: 'col-st-rejected',  txt: 'Rejected' },
+    };
+    const sb = statusBadges[status] || { cls: '', txt: status };
+
+    // Proof section
+    let proofHtml = '';
+    if (col.status === 'approved') {
+      proofHtml = `<div class="col-proof-approved"><span class="col-st-approved">Payment Approved ✓</span></div>`;
+    } else if (col.status === 'pendingApproval') {
+      proofHtml = `
+        <div class="col-proof-info">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Proof submitted. Awaiting admin review. (Attempt ${col.attemptCount || 1})
+        </div>`;
+    } else if (col.status === 'rejected') {
+      proofHtml = `
+        <div class="col-proof-rejected">
+          <div class="col-rejection-reason">⚠ ${col.rejectionReason || 'Proof rejected. Please upload again.'}</div>
+          <label class="col-upload-btn" for="proof_${col._id}">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+            Re-upload Proof
+          </label>
+          <input type="file" id="proof_${col._id}" style="display:none" accept="image/*,application/pdf"
+            onchange="clientSubmitProof('${plan._id}','${col._id}',this)">
+        </div>`;
+    } else {
+      // upcoming / dueToday / overdue — show upload button
+      proofHtml = `
+        <div class="col-upload-area">
+          <label class="col-upload-btn" for="proof_${col._id}">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+            Upload Payment Proof
+          </label>
+          <input type="file" id="proof_${col._id}" style="display:none" accept="image/*,application/pdf"
+            onchange="clientSubmitProof('${plan._id}','${col._id}',this)">
+          <span class="col-upload-hint">JPG, PNG, PDF • Max 20 MB</span>
+        </div>`;
+    }
+
+    return `
+      <div class="col-client-card col-card-${status}">
+        <div class="col-card-left">
+          <div class="col-card-date">${dateStr}</div>
+          <div class="col-card-type">${typeLabel}</div>
+          <div class="col-card-reason">${col.reason || plan.reason || ''}</div>
+        </div>
+        <div class="col-card-right">
+          <div class="col-card-amount">₹ ${(col.amount||0).toLocaleString('en-IN')}</div>
+          <span class="col-status-chip ${sb.cls}">${sb.txt}</span>
+        </div>
+        <div class="col-card-proof">
+          ${proofHtml}
+          <div class="col-card-upload-status" id="upload_status_${col._id}"></div>
+        </div>
+      </div>`;
+  }).join('');
+
+  listEl.innerHTML = cards || '<p style="color:var(--text-muted)">No collections found.</p>';
+}
+
+async function clientSubmitProof(planId, colId, input) {
+  const file = input?.files?.[0];
+  if (!file) return;
+  const statusEl = document.getElementById(`upload_status_${colId}`);
+  if (statusEl) statusEl.innerHTML = '<span style="color:var(--gold);font-size:0.75rem">Uploading\u2026</span>';
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  try {
+    const token = localStorage.getItem('token');
+    const BASE_URL = window.API_BASE || 'https://aarav-interiors.onrender.com/api';
+    const response = await fetch(`${BASE_URL}/client/collections/${planId}/collections/${colId}/submit-proof`, {
+      method:  'POST',
+      headers: { 'Authorization': `Bearer ${token}` },
+      body:    formData,
+    });
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.message || 'Upload failed');
+    }
+    if (statusEl) statusEl.innerHTML = '<span style="color:#78C88C;font-size:0.75rem">✓ Proof submitted!</span>';
+    // Reload the panel to reflect new status
+    setTimeout(() => loadCollections(), 1200);
+  } catch (err) {
+    if (statusEl) statusEl.innerHTML = `<span style="color:#ff6b6b;font-size:0.75rem">✗ ${err.message}</span>`;
+  }
 }
