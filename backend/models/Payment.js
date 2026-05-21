@@ -22,7 +22,15 @@ const PaymentSchema = new mongoose.Schema({
   projectTitleSnapshot: { type: String, default: '' },
   dueDate:   { type: Date },
   paidAt:    { type: Date },
-  invoiceUrl: { type: String },
+  invoiceUrl:           { type: String,  default: null },
+  invoiceNumber:        { type: String,  default: null },
+  invoiceGeneratedAt:   { type: Date,    default: null },
+  // Set explicitly at creation time — never inferred from description
+  invoiceType: {
+    type: String,
+    enum: ['income', 'expense', 'collection'],
+    default: null,
+  },
   createdAt: { type: Date, default: Date.now },
 });
 

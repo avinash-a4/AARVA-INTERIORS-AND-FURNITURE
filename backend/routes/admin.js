@@ -1,6 +1,7 @@
 const express    = require('express');
 const router     = express.Router();
 const nodemailer = require('nodemailer');
+const PDFDocument = require('pdfkit');
 const User       = require('../models/User');
 const Project    = require('../models/Project');
 const Payment    = require('../models/Payment');
@@ -9,6 +10,116 @@ const Query      = require('../models/Query');
 const { protect, adminOnly } = require('../middleware/auth');
 const upload     = require('../middleware/upload');
 const cloudinary = require('../config/cloudinary');
+
+// ── PDF Invoice helpers ──────────────────────────────────────────────────────
+
+async function _getInvoiceNumber(paidAt) {
+  const d = paidAt ? new Date(paidAt) : new Date();
+  const dateStr = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+  const prefix  = `INV-${dateStr}-PAY-`;
+  const count   = await Payment.countDocuments({ invoiceNumber: { $regex: `^${prefix}` } });
+  return `${prefix}${String(count + 1).padStart(4,'0')}`;
+}
+
+function _buildInvoicePDF(payment, invoiceNumber) {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ size: 'A4', margin: 0 });
+    const buffers = [];
+    doc.on('data', c => buffers.push(c));
+    doc.on('end',  () => resolve(Buffer.concat(buffers)));
+    doc.on('error', reject);
+
+    const W = 595.28, H = 841.89, M = 50;
+    const NAVY = '#0B1628', GOLD = '#C6A969', WHITE = '#FFFFFF';
+    const LGRAY = '#F4F4F8', MGRAY = '#888899', DTEXT = '#1A1A2E';
+
+    // ── Header band
+    doc.rect(0, 0, W, 145).fill(NAVY);
+    doc.fillColor(WHITE).font('Helvetica-Bold').fontSize(20)
+       .text('AARAV INTERIORS & FURNITURE', M, 32, { width: W - M*2 });
+    doc.fillColor(GOLD).font('Helvetica').fontSize(10)
+       .text('Luxury Interior Designers', M, 57, { width: W - M*2 });
+    doc.rect(M, 80, W - M*2, 1).fill(GOLD);
+    doc.fillColor(WHITE).font('Helvetica-Bold').fontSize(13)
+       .text('INVOICE', W - M - 130, 32, { width: 130, align: 'right' });
+    doc.fillColor(GOLD).font('Helvetica').fontSize(9)
+       .text(invoiceNumber, W - M - 200, 52, { width: 200, align: 'right' });
+
+    // Generated date under invoice number
+    const genDate = new Date().toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' });
+    doc.fillColor(WHITE).font('Helvetica').fontSize(8)
+       .text(`Generated: ${genDate}`, W - M - 200, 67, { width: 200, align: 'right' });
+
+    // ── Client + Details boxes
+    const bY = 165, bH = 85, halfW = (W - M*2) / 2 - 8;
+    doc.rect(M, bY, halfW, bH).fill(LGRAY);
+    doc.fillColor(MGRAY).font('Helvetica').fontSize(7).text('BILLED TO', M+14, bY+12);
+    doc.fillColor(DTEXT).font('Helvetica-Bold').fontSize(11)
+       .text(payment.clientNameSnapshot || 'Client', M+14, bY+24, { width: halfW - 20 });
+    doc.fillColor(DTEXT).font('Helvetica').fontSize(9)
+       .text(payment.projectTitleSnapshot || 'Archived Project', M+14, bY+42, { width: halfW - 20 });
+
+    const rX = M + halfW + 16;
+    doc.rect(rX, bY, halfW, bH).fill(LGRAY);
+    doc.fillColor(MGRAY).font('Helvetica').fontSize(7).text('PAYMENT DATE', rX+14, bY+12);
+    const pDate = payment.paidAt
+      ? new Date(payment.paidAt).toLocaleDateString('en-IN', { day:'numeric', month:'long', year:'numeric' })
+      : '—';
+    doc.fillColor(DTEXT).font('Helvetica-Bold').fontSize(11).text(pDate, rX+14, bY+24);
+
+    // ── Payment details section
+    let y = bY + bH + 30;
+    doc.fillColor(NAVY).font('Helvetica-Bold').fontSize(11).text('PAYMENT DETAILS', M, y);
+    y += 16; doc.rect(M, y, W - M*2, 1.5).fill(GOLD); y += 12;
+
+    // Determine type label
+    const isCollection = payment.invoiceType === 'collection' ||
+      (payment.description || '').startsWith('[Collection]');
+    const isExpense = payment.invoiceType === 'expense' || payment.type === 'expense';
+    const typeLabel = isCollection ? 'Collection Payment' : isExpense ? 'Expense Entry' : 'Income Payment';
+
+    const rows = [
+      ['Payment Type', typeLabel],
+      ['Category',     payment.category || 'Other'],
+      ['Payment Mode', payment.mode    || 'Other'],
+    ];
+    rows.forEach(([lbl, val], i) => {
+      if (i % 2 === 0) doc.rect(M, y-4, W - M*2, 22).fill(LGRAY);
+      doc.fillColor(MGRAY).font('Helvetica').fontSize(8).text(lbl, M+12, y, { width: 160 });
+      doc.fillColor(DTEXT).font('Helvetica').fontSize(9).text(val, M+180, y, { width: W - M*2 - 190 });
+      y += 22;
+    });
+
+    // Description row
+    if (payment.description) {
+      doc.rect(M, y-4, W - M*2, 22).fill(LGRAY);
+      doc.fillColor(MGRAY).font('Helvetica').fontSize(8).text('Description', M+12, y, { width: 160 });
+      doc.fillColor(DTEXT).font('Helvetica').fontSize(9)
+         .text(payment.description, M+180, y, { width: W - M*2 - 190 });
+      y += 22;
+    }
+
+    // ── Amount highlight box
+    y += 18;
+    doc.rect(M, y, W - M*2, 72).fill(NAVY);
+    doc.fillColor(MGRAY).font('Helvetica').fontSize(9).text('TOTAL AMOUNT', M+20, y+14);
+    doc.fillColor(GOLD).font('Helvetica-Bold').fontSize(26)
+       .text(`\u20B9 ${(payment.amount || 0).toLocaleString('en-IN')}`, M+20, y+28);
+
+    // ── Footer
+    const fY = H - 75;
+    doc.rect(0, fY, W, 75).fill(NAVY);
+    doc.rect(M, fY + 1, W - M*2, 1).fill(GOLD);
+    doc.fillColor(MGRAY).font('Helvetica').fontSize(7.5)
+       .text('Generated by AARAV Interior Management System', M, fY+18, { width: W - M*2, align: 'center' });
+    doc.fillColor(MGRAY).font('Helvetica-Oblique').fontSize(7)
+       .text('This is a system generated invoice. No signature required.', M, fY+32, { width: W - M*2, align: 'center' });
+    doc.fillColor(GOLD).font('Helvetica').fontSize(8)
+       .text(`Invoice: ${invoiceNumber}`, M, fY+48, { width: W - M*2, align: 'center' });
+
+    doc.end();
+  });
+}
 
 // All admin routes require auth + admin role
 router.use(protect, adminOnly);
@@ -356,6 +467,8 @@ router.post('/payments', async (req, res) => {
       // Permanent audit snapshots
       clientNameSnapshot:   clientDoc?.name  || '',
       projectTitleSnapshot: projectDoc?.title || '',
+      // Set invoiceType explicitly — never inferred later
+      invoiceType: paymentType === 'expense' ? 'expense' : 'income',
     });
 
     // Only increment amountPaid for INCOME — expenses must never affect client balance
@@ -384,6 +497,74 @@ router.put('/payments/:id/mark-paid', async (req, res) => {
     { new: true }
   );
   res.json(payment);
+});
+
+// POST /api/admin/payments/:id/invoice
+// Generates a luxury branded PDF invoice, uploads to Cloudinary, persists URL.
+// Idempotent: if invoice already exists, returns existing URL without regenerating.
+router.post('/payments/:id/invoice', async (req, res) => {
+  try {
+    const payment = await Payment.findById(req.params.id).lean();
+    if (!payment) return res.status(404).json({ message: 'Payment not found' });
+
+    // ── Idempotent guard — never regenerate
+    if (payment.invoiceUrl && payment.invoiceNumber) {
+      return res.json({ invoiceUrl: payment.invoiceUrl, invoiceNumber: payment.invoiceNumber, alreadyExists: true });
+    }
+
+    // ── 1. Backfill missing snapshots ———————————————————
+    let clientNameSnapshot   = payment.clientNameSnapshot;
+    let projectTitleSnapshot = payment.projectTitleSnapshot;
+
+    if (!clientNameSnapshot) {
+      const c = await User.findById(payment.clientId).select('name').lean();
+      clientNameSnapshot = c?.name || 'Deleted Client';
+      await Payment.findByIdAndUpdate(payment._id, { clientNameSnapshot });
+    }
+    if (!projectTitleSnapshot) {
+      const p = await Project.findById(payment.projectId).select('title').lean();
+      projectTitleSnapshot = p?.title || 'Archived Project';
+      await Payment.findByIdAndUpdate(payment._id, { projectTitleSnapshot });
+    }
+    payment.clientNameSnapshot   = clientNameSnapshot;
+    payment.projectTitleSnapshot = projectTitleSnapshot;
+
+    // ── 2. Generate invoice number (INV-YYYYMMDD-PAY-XXXX) ——————
+    const invoiceNumber = await _getInvoiceNumber(payment.paidAt);
+
+    // ── 3. Build PDF buffer ——————————————————————————
+    const pdfBuffer = await _buildInvoicePDF(payment, invoiceNumber);
+
+    // ── 4. Upload to Cloudinary (raw PDF) ——————————————
+    const invoiceUrl = await new Promise((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        {
+          folder:        'aarav-interiors/invoices',
+          resource_type: 'raw',
+          public_id:     `invoice_${payment._id}_${invoiceNumber}`,
+          format:        'pdf',
+        },
+        (error, result) => { if (error) return reject(error); resolve(result.secure_url); }
+      );
+      stream.end(pdfBuffer);
+    });
+
+    // ── 5. Persist invoice fields to Payment doc ——————————
+    const effectiveInvoiceType = payment.invoiceType ||
+      (payment.type === 'expense' ? 'expense' : 'income');
+
+    await Payment.findByIdAndUpdate(payment._id, {
+      invoiceUrl,
+      invoiceNumber,
+      invoiceGeneratedAt: new Date(),
+      ...(payment.invoiceType ? {} : { invoiceType: effectiveInvoiceType }),
+    });
+
+    res.json({ invoiceUrl, invoiceNumber });
+  } catch (err) {
+    console.error('Invoice generation error:', err);
+    res.status(500).json({ message: err.message || 'Failed to generate invoice' });
+  }
 });
 
 // GET /api/admin/queries

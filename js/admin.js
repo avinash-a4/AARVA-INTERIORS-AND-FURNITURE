@@ -859,7 +859,7 @@ async function submitPayment(e) {
   }
 }
 
-// ── PAYMENT HISTORY MODAL ──────────────────────────────────────
+// ── PAYMENT HISTORY MODAL ──────────────────────────────────────────
 async function openPaymentHistory(clientId) {
   if (!clientId || clientId === 'undefined') return;
   try {
@@ -867,9 +867,9 @@ async function openPaymentHistory(clientId) {
     const tbody = document.getElementById('paymentHistoryBody');
     if (!tbody) return;
     tbody.innerHTML = '';
-    
+
     if (payments.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--text-muted)">No payment history found.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--text-muted)">No payment history found.</td></tr>';
     } else {
       payments.forEach(p => {
         const dateStr   = p.paidAt ? new Date(p.paidAt).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) : '\u2014';
@@ -878,6 +878,9 @@ async function openPaymentHistory(clientId) {
         const typeBadge = isExpense
           ? `<span class="status-badge" style="background:rgba(255,107,107,0.15);color:#ff6b6b">Expense</span>`
           : `<span class="status-badge" style="background:rgba(76,175,80,0.15);color:#4CAF50">Income</span>`;
+        const invoiceCell = p.invoiceUrl
+          ? `<a href="${p.invoiceUrl}" target="_blank" rel="noopener noreferrer"><button class="btn btn-ghost" style="padding:0.2rem 0.55rem;font-size:0.65rem;color:#C6A969;border-color:#C6A969;white-space:nowrap">&#11011; Download</button></a>`
+          : `<button class="btn btn-ghost" style="padding:0.2rem 0.55rem;font-size:0.65rem;white-space:nowrap" onclick="generateInvoice('${p._id}', this)">Generate Invoice</button>`;
         tbody.insertAdjacentHTML('beforeend', `
           <tr>
             <td>${dateStr}</td>
@@ -886,6 +889,7 @@ async function openPaymentHistory(clientId) {
             <td><span class="status-badge" style="background:rgba(198,169,105,0.1);color:#C6A969">${cat}</span></td>
             <td>${p.mode ?? '\u2014'}</td>
             <td>${p.description || '\u2014'}</td>
+            <td style="white-space:nowrap">${invoiceCell}</td>
           </tr>
         `);
       });
@@ -900,6 +904,38 @@ async function openPaymentHistory(clientId) {
 
 function closePaymentHistory() {
   document.getElementById('paymentHistoryModal')?.classList.add('hidden');
+}
+
+// ── GENERATE INVOICE ─────────────────────────────────────────────
+async function generateInvoice(paymentId, btn) {
+  const originalText = btn.textContent.trim();
+  btn.disabled = true;
+  btn.textContent = 'Generating\u2026';
+  try {
+    const result = await API.post(`/admin/payments/${paymentId}/invoice`, {});
+    showToast(`\u2713 Invoice ${result.invoiceNumber} ready!`, 'success');
+
+    // Auto-download via temporary anchor
+    const a = document.createElement('a');
+    a.href     = result.invoiceUrl;
+    a.target   = '_blank';
+    a.rel      = 'noopener noreferrer';
+    a.download = (result.invoiceNumber || 'invoice') + '.pdf';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => document.body.removeChild(a), 500);
+
+    // Swap button to Download state in-place
+    const td = btn.closest('td');
+    if (td) {
+      td.innerHTML = `<a href="${result.invoiceUrl}" target="_blank" rel="noopener noreferrer"><button class="btn btn-ghost" style="padding:0.2rem 0.55rem;font-size:0.65rem;color:#C6A969;border-color:#C6A969;white-space:nowrap">&#11011; Download</button></a>`;
+    }
+  } catch (err) {
+    if (err.message?.includes('401')) { Auth.logout(); return; }
+    showToast(`\u2717 ${err.message || 'Failed to generate invoice'}`, 'error');
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
 }
 
 
