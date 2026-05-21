@@ -879,7 +879,7 @@ async function openPaymentHistory(clientId) {
           ? `<span class="status-badge" style="background:rgba(255,107,107,0.15);color:#ff6b6b">Expense</span>`
           : `<span class="status-badge" style="background:rgba(76,175,80,0.15);color:#4CAF50">Income</span>`;
         const invoiceCell = p.invoiceUrl
-          ? `<a href="${p.invoiceUrl}" target="_blank" rel="noopener noreferrer"><button class="btn btn-ghost" style="padding:0.2rem 0.55rem;font-size:0.65rem;color:#C6A969;border-color:#C6A969;white-space:nowrap">&#11011; Download</button></a>`
+          ? `<a href="${_invoiceAbsUrl(p.invoiceUrl)}" target="_blank" rel="noopener noreferrer"><button class="btn btn-ghost" style="padding:0.2rem 0.55rem;font-size:0.65rem;color:#C6A969;border-color:#C6A969;white-space:nowrap">&#11011; Download</button></a>`
           : `<button class="btn btn-ghost" style="padding:0.2rem 0.55rem;font-size:0.65rem;white-space:nowrap" onclick="generateInvoice('${p._id}', this)">Generate Invoice</button>`;
         tbody.insertAdjacentHTML('beforeend', `
           <tr>
@@ -907,6 +907,15 @@ function closePaymentHistory() {
 }
 
 // ── GENERATE INVOICE ─────────────────────────────────────────────
+// invoiceUrl is a relative path (/uploads/invoices/filename.pdf).
+// We prefix it with the backend origin (API.BASE without /api) for download.
+function _invoiceAbsUrl(relUrl) {
+  if (!relUrl) return '';
+  if (relUrl.startsWith('http')) return relUrl; // already absolute (old Cloudinary URLs)
+  const backendOrigin = API.BASE.replace(/\/api$/, '');
+  return backendOrigin + relUrl;
+}
+
 async function generateInvoice(paymentId, btn) {
   const originalText = btn.textContent.trim();
   btn.disabled = true;
@@ -915,9 +924,11 @@ async function generateInvoice(paymentId, btn) {
     const result = await API.post(`/admin/payments/${paymentId}/invoice`, {});
     showToast(`\u2713 Invoice ${result.invoiceNumber} ready!`, 'success');
 
+    const absUrl = _invoiceAbsUrl(result.invoiceUrl);
+
     // Auto-download via temporary anchor
     const a = document.createElement('a');
-    a.href     = result.invoiceUrl;
+    a.href     = absUrl;
     a.target   = '_blank';
     a.rel      = 'noopener noreferrer';
     a.download = (result.invoiceNumber || 'invoice') + '.pdf';
@@ -928,7 +939,7 @@ async function generateInvoice(paymentId, btn) {
     // Swap button to Download state in-place
     const td = btn.closest('td');
     if (td) {
-      td.innerHTML = `<a href="${result.invoiceUrl}" target="_blank" rel="noopener noreferrer"><button class="btn btn-ghost" style="padding:0.2rem 0.55rem;font-size:0.65rem;color:#C6A969;border-color:#C6A969;white-space:nowrap">&#11011; Download</button></a>`;
+      td.innerHTML = `<a href="${absUrl}" target="_blank" rel="noopener noreferrer"><button class="btn btn-ghost" style="padding:0.2rem 0.55rem;font-size:0.65rem;color:#C6A969;border-color:#C6A969;white-space:nowrap">&#11011; Download</button></a>`;
     }
   } catch (err) {
     if (err.message?.includes('401')) { Auth.logout(); return; }

@@ -1,15 +1,21 @@
-const express    = require('express');
-const router     = express.Router();
-const nodemailer = require('nodemailer');
+const express     = require('express');
+const router      = express.Router();
+const nodemailer  = require('nodemailer');
 const PDFDocument = require('pdfkit');
-const User       = require('../models/User');
-const Project    = require('../models/Project');
-const Payment    = require('../models/Payment');
-const Message    = require('../models/Message');
-const Query      = require('../models/Query');
+const fs          = require('fs');
+const path        = require('path');
+const User        = require('../models/User');
+const Project     = require('../models/Project');
+const Payment     = require('../models/Payment');
+const Message     = require('../models/Message');
+const Query       = require('../models/Query');
 const { protect, adminOnly } = require('../middleware/auth');
-const upload     = require('../middleware/upload');
-const cloudinary = require('../config/cloudinary');
+const upload      = require('../middleware/upload');
+const cloudinary  = require('../config/cloudinary'); // still used for design uploads
+
+// ── Invoice storage directory (auto-created if missing) ─────────────────────
+const INVOICE_DIR = path.join(__dirname, '..', 'uploads', 'invoices');
+fs.mkdirSync(INVOICE_DIR, { recursive: true });
 
 // ── PDF Invoice helpers ──────────────────────────────────────────────────────
 
@@ -500,19 +506,19 @@ router.put('/payments/:id/mark-paid', async (req, res) => {
 });
 
 // POST /api/admin/payments/:id/invoice
-// Generates a luxury branded PDF invoice, uploads to Cloudinary, persists URL.
-// Idempotent: if invoice already exists, returns existing URL without regenerating.
+// Generates luxury PDF, saves locally, persists relative URL in Payment doc.
+// Idempotent: returns existing URL if invoice already generated.
 router.post('/payments/:id/invoice', async (req, res) => {
   try {
     const payment = await Payment.findById(req.params.id).lean();
     if (!payment) return res.status(404).json({ message: 'Payment not found' });
 
-    // ── Idempotent guard — never regenerate
+    // ── Idempotent guard — return existing invoice without regenerating
     if (payment.invoiceUrl && payment.invoiceNumber) {
       return res.json({ invoiceUrl: payment.invoiceUrl, invoiceNumber: payment.invoiceNumber, alreadyExists: true });
     }
 
-    // ── 1. Backfill missing snapshots ———————————————————
+    // ── 1. Backfill missing snapshots ———————————————————————————
     let clientNameSnapshot   = payment.clientNameSnapshot;
     let projectTitleSnapshot = payment.projectTitleSnapshot;
 
@@ -529,32 +535,21 @@ router.post('/payments/:id/invoice', async (req, res) => {
     payment.clientNameSnapshot   = clientNameSnapshot;
     payment.projectTitleSnapshot = projectTitleSnapshot;
 
-    // ── 2. Generate invoice number (INV-YYYYMMDD-PAY-XXXX) ——————
+    // ── 2. Generate invoice number (INV-YYYYMMDD-PAY-XXXX) ————————
     const invoiceNumber = await _getInvoiceNumber(payment.paidAt);
 
-    // ── 3. Build PDF buffer ——————————————————————————
+    // ── 3. Build PDF buffer ————————————————————————————————————
     const pdfBuffer = await _buildInvoicePDF(payment, invoiceNumber);
 
-    // ── 4. Upload to Cloudinary (raw PDF — public, no auth required) ————
-    const invoiceUrl = await new Promise((resolve, reject) => {
-      const stream = cloudinary.uploader.upload_stream(
-        {
-          folder:          'aarav-interiors/invoices',
-          resource_type:   'raw',
-          type:            'upload',        // explicit public delivery type
-          access_mode:     'public',        // no auth required to access URL
-          use_filename:    true,
-          unique_filename: true,
-          overwrite:       false,
-          public_id:       `invoice_${payment._id}_${invoiceNumber}`,
-          format:          'pdf',
-        },
-        (error, result) => { if (error) return reject(error); resolve(result.secure_url); }
-      );
-      stream.end(pdfBuffer);
-    });
+    // ── 4. Save PDF to local disk ————————————————————————————
+    const filename   = `invoice_${invoiceNumber}.pdf`;
+    const filePath   = path.join(INVOICE_DIR, filename);
+    fs.writeFileSync(filePath, pdfBuffer);
 
-    // ── 5. Persist invoice fields to Payment doc ——————————
+    // Relative URL served by express.static — no auth, no expiry
+    const invoiceUrl = `/uploads/invoices/${filename}`;
+
+    // ── 5. Persist invoice fields (financial fields untouched) ———
     const effectiveInvoiceType = payment.invoiceType ||
       (payment.type === 'expense' ? 'expense' : 'income');
 
@@ -570,6 +565,17 @@ router.post('/payments/:id/invoice', async (req, res) => {
     console.error('Invoice generation error:', err);
     res.status(500).json({ message: err.message || 'Failed to generate invoice' });
   }
+});
+
+// GET /api/admin/invoices/:file  — direct download (auth-protected)
+router.get('/invoices/:file', (req, res) => {
+  // Sanitise filename — strip any path traversal attempts
+  const filename = path.basename(req.params.file);
+  const filePath = path.join(INVOICE_DIR, filename);
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ message: 'Invoice file not found' });
+  }
+  res.download(filePath, filename);
 });
 
 // GET /api/admin/queries
