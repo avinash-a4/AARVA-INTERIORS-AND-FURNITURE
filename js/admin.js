@@ -926,15 +926,15 @@ async function generateInvoice(paymentId, btn) {
 
     const absUrl = _invoiceAbsUrl(result.invoiceUrl);
 
-    // Auto-download via temporary anchor
+    // Open PDF in new tab — cross-origin download attribute is blocked by browsers
     const a = document.createElement('a');
-    a.href     = absUrl;
-    a.target   = '_blank';
-    a.rel      = 'noopener noreferrer';
-    a.download = (result.invoiceNumber || 'invoice') + '.pdf';
+    a.href   = absUrl;
+    a.target = '_blank';
+    a.rel    = 'noopener noreferrer';
     document.body.appendChild(a);
     a.click();
     setTimeout(() => document.body.removeChild(a), 500);
+
 
     // Swap button to Download state in-place
     const td = btn.closest('td');
