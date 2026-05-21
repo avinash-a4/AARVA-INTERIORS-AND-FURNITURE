@@ -535,14 +535,19 @@ router.post('/payments/:id/invoice', async (req, res) => {
     // ── 3. Build PDF buffer ——————————————————————————
     const pdfBuffer = await _buildInvoicePDF(payment, invoiceNumber);
 
-    // ── 4. Upload to Cloudinary (raw PDF) ——————————————
+    // ── 4. Upload to Cloudinary (raw PDF — public, no auth required) ————
     const invoiceUrl = await new Promise((resolve, reject) => {
       const stream = cloudinary.uploader.upload_stream(
         {
-          folder:        'aarav-interiors/invoices',
-          resource_type: 'raw',
-          public_id:     `invoice_${payment._id}_${invoiceNumber}`,
-          format:        'pdf',
+          folder:          'aarav-interiors/invoices',
+          resource_type:   'raw',
+          type:            'upload',        // explicit public delivery type
+          access_mode:     'public',        // no auth required to access URL
+          use_filename:    true,
+          unique_filename: true,
+          overwrite:       false,
+          public_id:       `invoice_${payment._id}_${invoiceNumber}`,
+          format:          'pdf',
         },
         (error, result) => { if (error) return reject(error); resolve(result.secure_url); }
       );
