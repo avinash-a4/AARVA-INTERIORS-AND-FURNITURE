@@ -13,9 +13,11 @@ const { protect, adminOnly } = require('../middleware/auth');
 const upload      = require('../middleware/upload');
 const cloudinary  = require('../config/cloudinary'); // still used for design uploads
 
-// ── Invoice storage directory (auto-created if missing) ─────────────────────
-const INVOICE_DIR = path.join(__dirname, '..', 'uploads', 'invoices');
-fs.mkdirSync(INVOICE_DIR, { recursive: true });
+const INVOICE_DIR = path.join(__dirname, '../uploads/invoices');
+
+if (!fs.existsSync(INVOICE_DIR)) {
+  fs.mkdirSync(INVOICE_DIR, { recursive: true });
+}
 
 // ── PDF Invoice helpers ──────────────────────────────────────────────────────
 
