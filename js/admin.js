@@ -860,8 +860,11 @@ async function submitPayment(e) {
 }
 
 // ── PAYMENT HISTORY MODAL ──────────────────────────────────────────
+let _currentHistoryClientId = null;
+
 async function openPaymentHistory(clientId) {
   if (!clientId || clientId === 'undefined') return;
+  _currentHistoryClientId = clientId;
   try {
     const payments = await API.get(`/admin/payments/client/${clientId}`);
     const tbody = document.getElementById('paymentHistoryBody');
@@ -946,6 +949,47 @@ async function generateInvoice(paymentId, btn) {
     showToast(`\u2717 ${err.message || 'Failed to generate invoice'}`, 'error');
     btn.disabled = false;
     btn.textContent = originalText;
+  }
+}
+
+async function generateLedgerInvoice() {
+  if (!_currentHistoryClientId) {
+    showToast('\u2717 No client selected', 'error');
+    return;
+  }
+
+  // Find the button (assuming it's in the modal footer)
+  const btn = document.querySelector('#paymentHistoryModal .btn-gold');
+  const originalText = btn ? btn.textContent : 'Generate Full Client Invoice';
+  
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Generating...';
+  }
+
+  try {
+    const result = await API.post(`/admin/clients/${_currentHistoryClientId}/ledger-invoice`, {});
+    showToast(`\u2713 Ledger ${result.ledgerInvoiceNumber} ready!`, 'success');
+
+    const absUrl = _invoiceAbsUrl(result.ledgerInvoiceUrl);
+
+    // Open PDF in new tab
+    const a = document.createElement('a');
+    a.href   = absUrl;
+    a.target = '_blank';
+    a.rel    = 'noopener noreferrer';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => document.body.removeChild(a), 500);
+
+  } catch (err) {
+    if (err.message?.includes('401')) { Auth.logout(); return; }
+    showToast(`\u2717 ${err.message || 'Failed to generate ledger invoice'}`, 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
   }
 }
 

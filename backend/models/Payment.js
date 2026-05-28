@@ -25,6 +25,9 @@ const PaymentSchema = new mongoose.Schema({
   invoiceUrl:           { type: String,  default: null },
   invoiceNumber:        { type: String,  default: null },
   invoiceGeneratedAt:   { type: Date,    default: null },
+  ledgerInvoiceUrl:     { type: String,  default: null },
+  ledgerInvoiceNumber:  { type: String,  default: null },
+  ledgerGeneratedAt:    { type: Date,    default: null },
   // Set explicitly at creation time — never inferred from description
   invoiceType: {
     type: String,

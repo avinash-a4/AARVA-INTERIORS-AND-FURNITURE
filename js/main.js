@@ -107,8 +107,18 @@ const API = {
       if (token) opts.headers['Authorization'] = 'Bearer ' + token;
       if (body) opts.body = JSON.stringify(body);
       const res = await fetch(this.BASE + endpoint, opts);
+
+      // Guard against HTML error pages (e.g. Render 404/502)
+      const contentType = res.headers.get('content-type') || '';
+      if (!res.ok) {
+        if (contentType.includes('text/html')) {
+          throw new Error(`Server returned ${res.status} (endpoint may not be deployed yet)`);
+        }
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.message || `Request failed with status ${res.status}`);
+      }
+
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Request failed');
       return data;
     } catch (err) {
       console.warn('API Error:', err.message);

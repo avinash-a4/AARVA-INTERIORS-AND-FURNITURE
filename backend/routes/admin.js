@@ -27,6 +27,14 @@ async function _getInvoiceNumber(paidAt) {
   return `${prefix}${String(count + 1).padStart(4,'0')}`;
 }
 
+async function _getLedgerInvoiceNumber() {
+  const d = new Date();
+  const dateStr = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+  const prefix  = `LEDGER-${dateStr}-CLIENT-`;
+  const count   = await Payment.countDocuments({ ledgerInvoiceNumber: { $regex: `^${prefix}` } });
+  return `${prefix}${String(count + 1).padStart(4,'0')}`;
+}
+
 function _buildInvoicePDF(payment, invoiceNumber) {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: 'A4', margin: 0 });
@@ -108,9 +116,11 @@ function _buildInvoicePDF(payment, invoiceNumber) {
     // ── Amount highlight box
     y += 18;
     doc.rect(M, y, W - M*2, 72).fill(NAVY);
-    doc.fillColor(MGRAY).font('Helvetica').fontSize(9).text('TOTAL AMOUNT', M+20, y+14);
+    // Use explicit x,y coordinates with lineBreak:false to prevent any stray continuation output
+    doc.fillColor(MGRAY).font('Helvetica').fontSize(9)
+       .text('TOTAL AMOUNT', M+20, y+14, { lineBreak: false });
     doc.fillColor(GOLD).font('Helvetica-Bold').fontSize(26)
-       .text(`\u20B9 ${(payment.amount || 0).toLocaleString('en-IN')}`, M+20, y+28);
+       .text(`\u20B9 ${(payment.amount || 0).toLocaleString('en-IN')}`, M+20, y+30, { lineBreak: false });
 
     // ── Footer
     const fY = H - 75;
@@ -122,6 +132,214 @@ function _buildInvoicePDF(payment, invoiceNumber) {
        .text('This is a system generated invoice. No signature required.', M, fY+32, { width: W - M*2, align: 'center' });
     doc.fillColor(GOLD).font('Helvetica').fontSize(8)
        .text(`Invoice: ${invoiceNumber}`, M, fY+48, { width: W - M*2, align: 'center' });
+
+    doc.end();
+  });
+}
+
+// ── Full Client Ledger PDF Builder ──────────────────────────────────────────
+function _buildLedgerPDF(payments, clientName, projectTitle, ledgerNumber, outstanding) {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ size: 'A4', margin: 0, autoFirstPage: true });
+    const buffers = [];
+    doc.on('data', c => buffers.push(c));
+    doc.on('end',  () => resolve(Buffer.concat(buffers)));
+    doc.on('error', reject);
+
+    const W = 595.28, H = 841.89, M = 50;
+    const NAVY = '#0B1628', GOLD = '#C6A969', WHITE = '#FFFFFF';
+    const LGRAY = '#F4F4F8', MGRAY = '#888899', DTEXT = '#1A1A2E';
+    const ROW_H = 22;
+
+    // ── Header band ────────────────────────────────────────────────────────
+    const drawHeader = () => {
+      doc.rect(0, 0, W, 145).fill(NAVY);
+      doc.fillColor(WHITE).font('Helvetica-Bold').fontSize(20)
+         .text('AARAV INTERIORS & FURNITURE', M, 32, { width: W - M*2, lineBreak: false });
+      doc.fillColor(GOLD).font('Helvetica').fontSize(10)
+         .text('Luxury Interior Designers', M, 57, { width: W - M*2, lineBreak: false });
+      doc.rect(M, 80, W - M*2, 1).fill(GOLD);
+      doc.fillColor(WHITE).font('Helvetica-Bold').fontSize(13)
+         .text('LEDGER', W - M - 130, 32, { width: 130, align: 'right', lineBreak: false });
+      doc.fillColor(GOLD).font('Helvetica').fontSize(9)
+         .text(ledgerNumber, W - M - 200, 52, { width: 200, align: 'right', lineBreak: false });
+      const genDate = new Date().toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' });
+      doc.fillColor(WHITE).font('Helvetica').fontSize(8)
+         .text(`Generated: ${genDate}`, W - M - 200, 67, { width: 200, align: 'right', lineBreak: false });
+    };
+    drawHeader();
+
+    // ── Client info boxes ───────────────────────────────────────────────────
+    const bY = 165, bH = 85, halfW = (W - M*2) / 2 - 8;
+    doc.rect(M, bY, halfW, bH).fill(LGRAY);
+    doc.fillColor(MGRAY).font('Helvetica').fontSize(7)
+       .text('BILLED TO', M+14, bY+10, { lineBreak: false });
+    doc.fillColor(DTEXT).font('Helvetica-Bold').fontSize(11)
+       .text(clientName || 'Client', M+14, bY+22, { width: halfW - 20, lineBreak: false });
+    doc.fillColor(DTEXT).font('Helvetica').fontSize(9)
+       .text(projectTitle || 'All Projects', M+14, bY+40, { width: halfW - 20, lineBreak: false });
+    doc.fillColor(MGRAY).font('Helvetica').fontSize(7)
+       .text('INVOICE TYPE', M+14, bY+58, { lineBreak: false });
+    doc.fillColor(DTEXT).font('Helvetica').fontSize(8)
+       .text('Client Ledger Invoice', M+14, bY+68, { lineBreak: false });
+
+    const rX = M + halfW + 16;
+    doc.rect(rX, bY, halfW, bH).fill(LGRAY);
+    const sortedPmts = [...payments].sort((a,b) => new Date(a.paidAt||a.createdAt) - new Date(b.paidAt||b.createdAt));
+    const firstDate = sortedPmts.length
+      ? new Date(sortedPmts[0].paidAt || sortedPmts[0].createdAt).toLocaleDateString('en-IN', { day:'numeric', month:'long', year:'numeric' })
+      : '—';
+    const today = new Date().toLocaleDateString('en-IN', { day:'numeric', month:'long', year:'numeric' });
+    doc.fillColor(MGRAY).font('Helvetica').fontSize(7)
+       .text('INVOICE DATE', rX+14, bY+10, { lineBreak: false });
+    doc.fillColor(DTEXT).font('Helvetica-Bold').fontSize(11)
+       .text(today, rX+14, bY+22, { lineBreak: false });
+    doc.fillColor(MGRAY).font('Helvetica').fontSize(7)
+       .text('PERIOD', rX+14, bY+40, { lineBreak: false });
+    doc.fillColor(DTEXT).font('Helvetica').fontSize(8)
+       .text(`${firstDate}  →  ${today}`, rX+14, bY+52, { width: halfW - 20, lineBreak: false });
+
+    // ── Payment History section header ──────────────────────────────────────
+    let y = bY + bH + 30;
+    doc.fillColor(NAVY).font('Helvetica-Bold').fontSize(11)
+       .text('PAYMENT HISTORY', M, y, { lineBreak: false });
+    y += 16; doc.rect(M, y, W - M*2, 1.5).fill(GOLD); y += 10;
+
+    // Column widths: Date | Type | Category | Mode | Description | Amount
+    const cols = [
+      { label: 'Date',        w: 78  },
+      { label: 'Type',        w: 60  },
+      { label: 'Category',    w: 70  },
+      { label: 'Mode',        w: 60  },
+      { label: 'Description', w: 130 },
+      { label: 'Amount',      w: 82  },
+    ];
+    const tableW = cols.reduce((s,c) => s+c.w, 0); // 480
+    const tX = M;
+
+    // Draw table header row
+    const drawTableHeader = (yPos) => {
+      doc.rect(tX, yPos, tableW, ROW_H).fill(NAVY);
+      let cx = tX + 6;
+      cols.forEach(col => {
+        doc.fillColor(GOLD).font('Helvetica-Bold').fontSize(7.5)
+           .text(col.label, cx, yPos + 7, { width: col.w - 6, lineBreak: false });
+        cx += col.w;
+      });
+      return yPos + ROW_H;
+    };
+    y = drawTableHeader(y);
+
+    // Draw payment rows with auto-pagination
+    sortedPmts.forEach((p, idx) => {
+      // Page break check — leave room for footer summary (120px)
+      if (y + ROW_H > H - 140) {
+        // Draw continuation footer on current page
+        const fY = H - 55;
+        doc.rect(0, fY, W, 55).fill(NAVY);
+        doc.rect(M, fY+1, W-M*2, 1).fill(GOLD);
+        doc.fillColor(MGRAY).font('Helvetica').fontSize(7)
+           .text(`Ledger: ${ledgerNumber}  •  Page continued…`, M, fY+20, { width: W-M*2, align: 'center', lineBreak: false });
+        doc.addPage();
+        // Reprint header on new page
+        drawHeader();
+        y = 155;
+        y = drawTableHeader(y);
+      }
+
+      const isEven = idx % 2 === 0;
+      if (isEven) doc.rect(tX, y, tableW, ROW_H).fill(LGRAY);
+
+      const dateStr = (p.paidAt || p.createdAt)
+        ? new Date(p.paidAt || p.createdAt).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' })
+        : '—';
+
+      // Determine type label
+      const isCol = p.invoiceType === 'collection' || (p.description||'').startsWith('[Collection]');
+      const isExp = p.invoiceType === 'expense' || p.type === 'expense';
+      const typeLabel = isCol ? 'Collection' : isExp ? 'Expense' : 'Income';
+      const typeColor = isCol ? '#64B4FF' : isExp ? '#ff6b6b' : '#4CAF50';
+
+      const cat  = p.category    || 'Other';
+      const mode = p.mode        || 'Other';
+      const desc = p.description || '—';
+      const amt  = `\u20B9 ${(p.amount || 0).toLocaleString('en-IN')}`;
+
+      const rowData = [dateStr, typeLabel, cat, mode, desc, amt];
+      let cx = tX + 6;
+      rowData.forEach((val, ci) => {
+        const col = cols[ci];
+        // Amount column: right-align and gold for income, red for expense
+        const isAmtCol = ci === rowData.length - 1;
+        const textColor = isAmtCol ? (isExp ? '#ff6b6b' : '#1A1A2E') : DTEXT;
+        const align = isAmtCol ? 'right' : 'left';
+        const textX = isAmtCol ? cx : cx;
+        if (ci === 1) {
+          // Type column — coloured badge text
+          doc.fillColor(typeColor).font('Helvetica-Bold').fontSize(7.5)
+             .text(val, textX, y + 7, { width: col.w - 8, lineBreak: false });
+        } else {
+          doc.fillColor(textColor).font(isAmtCol ? 'Helvetica-Bold' : 'Helvetica').fontSize(7.5)
+             .text(val, textX, y + 7, { width: col.w - (isAmtCol ? 10 : 6), align, lineBreak: false });
+        }
+        cx += col.w;
+      });
+      y += ROW_H;
+    });
+
+    // ── Summary Footer ─────────────────────────────────────────────────────
+    y += 20;
+    // Check if summary fits; if not, add a new page
+    if (y + 130 > H - 80) {
+      doc.addPage();
+      drawHeader();
+      y = 165;
+    }
+
+    // Calculate totals
+    let totalIncome = 0, totalExpense = 0;
+    sortedPmts.forEach(p => {
+      const isExp = p.invoiceType === 'expense' || p.type === 'expense';
+      if (isExp) totalExpense += (p.amount || 0);
+      else       totalIncome  += (p.amount || 0);
+    });
+    const netCollected = totalIncome - totalExpense;
+    const totalTx      = sortedPmts.length;
+
+    doc.fillColor(NAVY).font('Helvetica-Bold').fontSize(11)
+       .text('LEDGER SUMMARY', M, y, { lineBreak: false });
+    y += 16; doc.rect(M, y, W - M*2, 1.5).fill(GOLD); y += 14;
+
+    const summaryRows = [
+      ['Total Income',       `\u20B9 ${totalIncome.toLocaleString('en-IN')}`],
+      ['Total Expense',      `\u20B9 ${totalExpense.toLocaleString('en-IN')}`],
+      ['Net Collected',      `\u20B9 ${netCollected.toLocaleString('en-IN')}`],
+      ['Total Transactions', `${totalTx}`],
+    ];
+    if (outstanding !== null && outstanding !== undefined) {
+      summaryRows.push(['Current Outstanding', `\u20B9 ${outstanding.toLocaleString('en-IN')}`]);
+    }
+
+    summaryRows.forEach(([label, val], si) => {
+      if (si % 2 === 0) doc.rect(M, y-4, W-M*2, 26).fill(LGRAY);
+      doc.fillColor(MGRAY).font('Helvetica').fontSize(8.5)
+         .text(label, M+14, y, { width: 200, lineBreak: false });
+      const isNeg = label === 'Net Collected' && netCollected < 0;
+      doc.fillColor(isNeg ? '#ff6b6b' : DTEXT).font('Helvetica-Bold').fontSize(9)
+         .text(val, M+220, y, { width: W-M*2-230, align: 'right', lineBreak: false });
+      y += 26;
+    });
+
+    // ── Page footer ────────────────────────────────────────────────────────
+    const fY = H - 75;
+    doc.rect(0, fY, W, 75).fill(NAVY);
+    doc.rect(M, fY+1, W-M*2, 1).fill(GOLD);
+    doc.fillColor(MGRAY).font('Helvetica').fontSize(7.5)
+       .text('Generated by AARAV Interior Management System', M, fY+18, { width: W-M*2, align: 'center', lineBreak: false });
+    doc.fillColor(MGRAY).font('Helvetica-Oblique').fontSize(7)
+       .text('This is a system generated ledger invoice. No signature required.', M, fY+32, { width: W-M*2, align: 'center', lineBreak: false });
+    doc.fillColor(GOLD).font('Helvetica').fontSize(8)
+       .text(`Ledger: ${ledgerNumber}`, M, fY+48, { width: W-M*2, align: 'center', lineBreak: false });
 
     doc.end();
   });
@@ -564,6 +782,72 @@ router.post('/payments/:id/invoice', async (req, res) => {
   } catch (err) {
     console.error('Invoice generation error:', err);
     res.status(500).json({ message: err.message || 'Failed to generate invoice' });
+  }
+});
+
+// ── POST /api/admin/clients/:clientId/ledger-invoice ───────────────────────
+// Generates a full consolidated ledger PDF for ALL payments of a client.
+// Always regenerates fresh (reflects current state). Stores ledger fields only.
+router.post('/clients/:clientId/ledger-invoice', async (req, res) => {
+  try {
+    const { clientId } = req.params;
+
+    // 1. Fetch all payments for this client, oldest first
+    const payments = await Payment.find({ clientId })
+      .sort({ paidAt: 1, createdAt: 1 })
+      .lean();
+
+    if (!payments.length) {
+      return res.status(404).json({ message: 'No payments found for this client' });
+    }
+
+    // 2. Resolve client name and project title from snapshots / live data
+    let clientName   = payments[0].clientNameSnapshot   || '';
+    let projectTitle = payments[0].projectTitleSnapshot || '';
+    if (!clientName) {
+      const c = await User.findById(clientId).select('name').lean();
+      clientName = c?.name || 'Client';
+    }
+    if (!projectTitle) {
+      const p = await Project.findOne({ clientId }).select('title').lean();
+      projectTitle = p?.title || 'Project';
+    }
+
+    // 3. Try to get outstanding balance from live project
+    let outstanding = null;
+    try {
+      const proj = await Project.findOne({ clientId }).select('totalCost amountPaid').lean();
+      if (proj && proj.totalCost) {
+        outstanding = Math.max(0, proj.totalCost - (proj.amountPaid || 0));
+      }
+    } catch (_) { /* non-fatal */ }
+
+    // 4. Generate ledger invoice number
+    const ledgerInvoiceNumber = await _getLedgerInvoiceNumber();
+
+    // 5. Build PDF
+    const pdfBuffer = await _buildLedgerPDF(payments, clientName, projectTitle, ledgerInvoiceNumber, outstanding);
+
+    // 6. Save to disk
+    const filename = `ledger_${ledgerInvoiceNumber}.pdf`;
+    const filePath = path.join(INVOICE_DIR, filename);
+    fs.writeFileSync(filePath, pdfBuffer);
+    const ledgerInvoiceUrl = `/uploads/invoices/${filename}`;
+
+    // 7. Store ledger fields on most-recent payment only (does NOT touch invoiceUrl/invoiceNumber)
+    const mostRecent = await Payment.findOne({ clientId }).sort({ paidAt: -1, createdAt: -1 });
+    if (mostRecent) {
+      await Payment.findByIdAndUpdate(mostRecent._id, {
+        ledgerInvoiceUrl,
+        ledgerInvoiceNumber,
+        ledgerGeneratedAt: new Date(),
+      });
+    }
+
+    res.json({ ledgerInvoiceUrl, ledgerInvoiceNumber });
+  } catch (err) {
+    console.error('Ledger invoice generation error:', err);
+    res.status(500).json({ message: err.message || 'Failed to generate ledger invoice' });
   }
 });
 
