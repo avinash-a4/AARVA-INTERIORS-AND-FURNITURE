@@ -122,7 +122,7 @@ function _buildInvoicePDF(payment, invoiceNumber) {
     doc.fillColor(MGRAY).font('Helvetica').fontSize(9)
        .text('TOTAL AMOUNT', M+20, y+14, { lineBreak: false });
     doc.fillColor(GOLD).font('Helvetica-Bold').fontSize(26)
-       .text(`\u20B9 ${(payment.amount || 0).toLocaleString('en-IN')}`, M+20, y+30, { lineBreak: false });
+       .text(`${(payment.amount || 0).toLocaleString('en-IN')}`, M+20, y+30, { lineBreak: false });
 
     // ── Footer
     const fY = H - 75;
@@ -265,7 +265,7 @@ function _buildLedgerPDF(payments, clientName, projectTitle, ledgerNumber, outst
       const cat  = p.category    || 'Other';
       const mode = p.mode        || 'Other';
       const desc = p.description || '—';
-      const amt  = `\u20B9 ${(p.amount || 0).toLocaleString('en-IN')}`;
+      const amt  = `${(p.amount || 0).toLocaleString('en-IN')}`;
 
       const rowData = [dateStr, typeLabel, cat, mode, desc, amt];
       let cx = tX + 6;
@@ -313,13 +313,13 @@ function _buildLedgerPDF(payments, clientName, projectTitle, ledgerNumber, outst
     y += 16; doc.rect(M, y, W - M*2, 1.5).fill(GOLD); y += 14;
 
     const summaryRows = [
-      ['Total Income',       `\u20B9 ${totalIncome.toLocaleString('en-IN')}`],
-      ['Total Expense',      `\u20B9 ${totalExpense.toLocaleString('en-IN')}`],
-      ['Net Collected',      `\u20B9 ${netCollected.toLocaleString('en-IN')}`],
+      ['Total Income',       `${totalIncome.toLocaleString('en-IN')}`],
+      ['Total Expense',      `${totalExpense.toLocaleString('en-IN')}`],
+      ['Net Collected',      `${netCollected.toLocaleString('en-IN')}`],
       ['Total Transactions', `${totalTx}`],
     ];
     if (outstanding !== null && outstanding !== undefined) {
-      summaryRows.push(['Current Outstanding', `\u20B9 ${outstanding.toLocaleString('en-IN')}`]);
+      summaryRows.push(['Current Outstanding', `${outstanding.toLocaleString('en-IN')}`]);
     }
 
     summaryRows.forEach(([label, val], si) => {

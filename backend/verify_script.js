@@ -2,6 +2,20 @@ const mongoose = require('mongoose');
 const fs = require('fs');
 const path = require('path');
 const pdf = require('pdf-parse');
+
+async function getPdfText(buffer) {
+  if (typeof pdf === 'function') {
+    const data = await pdf(buffer);
+    return data.text;
+  } else if (pdf && pdf.PDFParse) {
+    const parser = new pdf.PDFParse({ data: buffer });
+    const res = await parser.getText();
+    await parser.destroy();
+    return res.text;
+  } else {
+    throw new Error('Unsupported pdf-parse module format');
+  }
+}
 const User = require('./models/User');
 const Project = require('./models/Project');
 const Payment = require('./models/Payment');
@@ -25,10 +39,15 @@ app.use((req, res, next) => {
 app.use('/api/admin', adminRoutes);
 // app.use('/api/auth', authRoutes);
 
+const { MongoMemoryServer } = require('mongodb-memory-server');
+
 let server;
+let mongoServer;
 
 async function runTests() {
-  await mongoose.connect('mongodb://localhost:27017/aarav_interiors_test');
+  mongoServer = await MongoMemoryServer.create();
+  const mongoUri = mongoServer.getUri();
+  await mongoose.connect(mongoUri);
   
   server = app.listen(5001, () => console.log('Test server running on 5001'));
 
@@ -37,6 +56,18 @@ async function runTests() {
     await User.deleteMany({});
     await Project.deleteMany({});
     await Payment.deleteMany({});
+
+    // Create admin
+    const admin = await User.create({
+      name: 'Test Admin',
+      email: 'admin@example.com',
+      password: 'password',
+      role: 'admin'
+    });
+
+    const jwt = require('jsonwebtoken');
+    const token = jwt.sign({ id: admin._id }, process.env.JWT_SECRET || 'aarav_secret');
+    const headers = { 'Authorization': 'Bearer ' + token };
 
     // Create client
     const client = await User.create({
@@ -68,8 +99,11 @@ async function runTests() {
       invoiceType: 'income'
     });
     
-    let res1 = await fetch(`http://localhost:5001/api/admin/payments/${p1._id}/invoice`, { method: 'POST' });
+    let res1 = await fetch(`http://localhost:5001/api/admin/payments/${p1._id}/invoice`, { method: 'POST', headers });
     let data1 = await res1.json();
+    if (!res1.ok || !data1.invoiceUrl) {
+      console.error("Fetch invoice failed:", res1.status, data1);
+    }
     
     let t1_pass = true;
     if (!data1.invoiceUrl || !data1.invoiceNumber) t1_pass = false;
@@ -77,8 +111,7 @@ async function runTests() {
     // check PDF 1
     const pdf1Path = path.join(__dirname, data1.invoiceUrl);
     const pdf1Buf = fs.readFileSync(pdf1Path);
-    const pdf1Data = await pdf(pdf1Buf);
-    const pdf1Text = pdf1Data.text;
+    const pdf1Text = await getPdfText(pdf1Buf);
     
     // No stray 1 check
     if (pdf1Text.includes('TOTAL AMOUNT\n1 \u20B9')) t1_pass = false; // The prompt said stray "1" was removed
@@ -117,7 +150,7 @@ async function runTests() {
     });
 
     // Test 2: Full Client Invoice
-    let res2 = await fetch(`http://localhost:5001/api/admin/clients/${client._id}/ledger-invoice`, { method: 'POST' });
+    let res2 = await fetch(`http://localhost:5001/api/admin/clients/${client._id}/ledger-invoice`, { method: 'POST', headers });
     let data2 = await res2.json();
 
     let t2_pass = true;
@@ -125,8 +158,7 @@ async function runTests() {
     
     const pdf2Path = path.join(__dirname, data2.ledgerInvoiceUrl);
     const pdf2Buf = fs.readFileSync(pdf2Path);
-    const pdf2Data = await pdf(pdf2Buf);
-    const pdf2Text = pdf2Data.text;
+    const pdf2Text = await getPdfText(pdf2Buf);
 
     // verify totals
     if (!pdf2Text.includes('1,25,000')) t2_pass = false; // total income 50k + 75k
@@ -149,15 +181,14 @@ async function runTests() {
 
     // TEST 4: Deleted entity
     await User.findByIdAndDelete(client._id);
-    let res4 = await fetch(`http://localhost:5001/api/admin/clients/${client._id}/ledger-invoice`, { method: 'POST' });
+    let res4 = await fetch(`http://localhost:5001/api/admin/clients/${client._id}/ledger-invoice`, { method: 'POST', headers });
     let data4 = await res4.json();
     
     let t4_pass = true;
     if (!data4.ledgerInvoiceUrl) t4_pass = false;
     const pdf4Path = path.join(__dirname, data4.ledgerInvoiceUrl);
     const pdf4Buf = fs.readFileSync(pdf4Path);
-    const pdf4Data = await pdf(pdf4Buf);
-    const pdf4Text = pdf4Data.text;
+    const pdf4Text = await getPdfText(pdf4Buf);
     if (!pdf4Text.includes('Client')) t4_pass = false; // fallback
 
     console.log(`TEST 4 (Deleted entity): ${t4_pass ? 'PASS' : 'FAIL'}`);
@@ -178,21 +209,30 @@ async function runTests() {
       });
     }
 
-    let res5 = await fetch(`http://localhost:5001/api/admin/clients/${client._id}/ledger-invoice`, { method: 'POST' });
+    let res5 = await fetch(`http://localhost:5001/api/admin/clients/${client._id}/ledger-invoice`, { method: 'POST', headers });
     let data5 = await res5.json();
     let t5_pass = true;
     const pdf5Path = path.join(__dirname, data5.ledgerInvoiceUrl);
     const pdf5Buf = fs.readFileSync(pdf5Path);
-    const pdf5Data = await pdf(pdf5Buf);
-    if (pdf5Data.numpages < 2) t5_pass = false;
+    // We can get number of pages by parsing first
+    if (typeof pdf === 'function') {
+      const pdf5Data = await pdf(pdf5Buf);
+      if (pdf5Data.numpages < 2) t5_pass = false;
+    } else if (pdf && pdf.PDFParse) {
+      const parser = new pdf.PDFParse({ data: pdf5Buf });
+      const docInfo = await parser.load();
+      if (docInfo.numPages < 2) t5_pass = false;
+      await parser.destroy();
+    }
 
     console.log(`TEST 5 (Large history): ${t5_pass ? 'PASS' : 'FAIL'}`);
 
   } catch (err) {
     console.error(err);
   } finally {
-    server.close();
+    if (server) server.close();
     await mongoose.disconnect();
+    if (mongoServer) await mongoServer.stop();
   }
 }
 
