@@ -29,6 +29,7 @@ function showAdminPanel(id) {
   if (id === 'payments-admin')  loadAdminPayments();
   if (id === 'queries')         loadQueries();
   if (id === 'collections')     loadCollections();
+  if (id === 'estimator-config') loadEstimatorConfig();
 }
 
 function toggleSidebar() { document.getElementById('sidebar').classList.toggle('mobile-open'); }
@@ -674,9 +675,105 @@ async function submitTimeline(e) {
 }
 
 // ── SAVE ESTIMATOR CONFIG ──────────────────────────────────────
-function saveConfig(e) {
+const ESTIMATOR_ADMIN_LABELS = {
+  bhkPrices: {
+    '1BHK': '1 BHK Base',
+    '2BHK': '2 BHK Base',
+    '3BHK': '3 BHK Base',
+    '4BHK': '4 BHK Base',
+    '5+BHK': '5+ BHK Base',
+  },
+  roomPrices: {
+    kitchen: 'Kitchen',
+    living: 'Living Room',
+    'master-bed': 'Master Bedroom',
+    wardrobe: 'Wardrobe',
+    'false-ceiling': 'False Ceiling',
+    'kids-bed': 'Kids Bedroom',
+    exterior: 'Exterior',
+    'extra-bed': 'Additional Bedroom',
+    'master-wardrobe': 'Master Bedroom Wardrobe',
+    'master-king-bed-6x6': 'Master Bedroom King Size Bed 6x6',
+    'master-queen-bed-5x6': 'Master Bedroom Queen Size Bed 5x6',
+    'master-tv-unit': 'Master Bedroom TV Unit',
+    'master-study-unit': 'Master Bedroom Study Unit',
+    'master-side-table': 'Master Bedroom Side Table',
+    'kids-wardrobe': 'Kids Bedroom Wardrobe',
+    'kids-bed-3x6': 'Kids Bed 3x6',
+    'kids-study-unit': 'Kids Bedroom Study Unit',
+    'kids-tv-unit': 'Kids Bedroom TV Unit',
+    'kids-side-table': 'Kids Bedroom Side Table',
+    'living-tv-unit': 'Living Room TV Unit',
+    partition: 'Partition',
+    'console-unit': 'Console Unit',
+    'wall-highlighters': 'Wall Highlighters',
+    'main-door': 'Main Door',
+    'shoe-box': 'Shoe Box',
+    'laundry-unit': 'Laundry Unit',
+    'storage-unit': 'Storage Unit',
+  },
+  addonPrices: {
+    'modular-kitchen': 'Modular Kitchen Upgrade',
+    'wardrobes-upgrade': 'Wardrobe Interior Upgrade',
+    'smart-lighting': 'Smart Lighting System',
+    'custom-furniture': 'Custom Furniture Set',
+  },
+};
+
+let _estimatorConfigLoaded = false;
+
+async function loadEstimatorConfig() {
+  try {
+    const config = await API.get('/estimator/config');
+    renderEstimatorConfigGroup('estimator_bhk_config', 'bhkPrices', config.bhkPrices || {});
+    renderEstimatorConfigGroup('estimator_room_config', 'roomPrices', config.roomPrices || {});
+    renderEstimatorConfigGroup('estimator_addon_config', 'addonPrices', config.addonPrices || {});
+    _estimatorConfigLoaded = true;
+    return true;
+  } catch (err) {
+    if (err.message?.includes('401')) { Auth.logout(); return; }
+    showToast(`✗ ${err.message || 'Failed to load estimator config'}`, 'error');
+    return false;
+  }
+}
+
+function renderEstimatorConfigGroup(containerId, group, prices) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  container.innerHTML = Object.entries(prices).map(([key, value]) => `
+    <div class="form-group">
+      <label class="form-label">${getEstimatorAdminLabel(group, key)} (₹)</label>
+      <input class="form-input estimator-config-input" data-group="${group}" data-key="${key}" value="${Number(value) || 0}" type="number" min="0" />
+    </div>
+  `).join('');
+}
+
+function getEstimatorAdminLabel(group, key) {
+  return ESTIMATOR_ADMIN_LABELS[group]?.[key] || String(key).split('-').map(part => part ? part[0].toUpperCase() + part.slice(1) : '').join(' ');
+}
+
+async function saveConfig(e) {
   e.preventDefault();
-  showToast('✓ Estimator pricing saved successfully!', 'success');
+  if (!_estimatorConfigLoaded && !(await loadEstimatorConfig())) return;
+
+  const payload = { bhkPrices: {}, roomPrices: {}, addonPrices: {} };
+  document.querySelectorAll('.estimator-config-input').forEach(input => {
+    const group = input.dataset.group;
+    const key = input.dataset.key;
+    if (!payload[group]) payload[group] = {};
+    payload[group][key] = Number(input.value) || 0;
+  });
+
+  try {
+    const saved = await API.put('/estimator/config', payload);
+    renderEstimatorConfigGroup('estimator_bhk_config', 'bhkPrices', saved.bhkPrices || {});
+    renderEstimatorConfigGroup('estimator_room_config', 'roomPrices', saved.roomPrices || {});
+    renderEstimatorConfigGroup('estimator_addon_config', 'addonPrices', saved.addonPrices || {});
+    showToast('✓ Estimator pricing saved successfully!', 'success');
+  } catch (err) {
+    if (err.message?.includes('401')) { Auth.logout(); return; }
+    showToast(`✗ ${err.message || 'Failed to save estimator config'}`, 'error');
+  }
 }
 
 // ── LOAD PROJECTS INTO UPLOAD DROPDOWN ────────────────────────

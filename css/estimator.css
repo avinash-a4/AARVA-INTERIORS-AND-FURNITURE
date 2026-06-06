@@ -163,6 +163,38 @@
 .room-name { font-size: 0.88rem; font-weight: 600; color: var(--white); }
 .room-cost { font-size: 0.78rem; color: var(--gold); }
 
+.room-suboptions {
+  display: none;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid rgba(198,169,105,0.18);
+  border-radius: var(--radius-md);
+  background: rgba(11,44,61,0.25);
+}
+.room-suboptions.active { display: grid; }
+.room-suboption-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(198,169,105,0.16);
+  border-radius: var(--radius-sm);
+  background: rgba(7,30,42,0.45);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+.room-suboption-card input { display: none; }
+.room-suboption-card:has(input:checked) {
+  border-color: var(--gold);
+  background: rgba(198,169,105,0.08);
+}
+.room-suboption-card:hover { border-color: rgba(198,169,105,0.45); }
+.room-suboption-name { font-size: 0.8rem; font-weight: 600; color: var(--white); }
+.room-suboption-price { font-size: 0.75rem; color: var(--gold); flex-shrink: 0; }
+
 /* Bedroom Qty */
 .bedroom-qty-wrap {
   display: flex;
@@ -320,6 +352,7 @@
 
 @media (max-width: 768px) {
   .rooms-grid { grid-template-columns: repeat(2, 1fr); }
+  .room-suboptions { grid-template-columns: repeat(2, 1fr); }
   .packages-est-grid { grid-template-columns: 1fr; }
   .result-actions { flex-direction: column; }
 }
@@ -328,4 +361,5 @@
   .bhk-card { padding: 1.25rem 1.5rem; min-width: 100px; }
   .bhk-num { font-size: 2rem; }
   .rooms-grid { grid-template-columns: 1fr 1fr; }
+  .room-suboptions { grid-template-columns: 1fr; }
 }
