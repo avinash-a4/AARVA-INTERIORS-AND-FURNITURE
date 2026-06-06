@@ -12,6 +12,9 @@ document.addEventListener('DOMContentLoaded', () => {
   loadAdminPayments();
   loadQueries();
   loadCollections();   // pre-load so stats are ready
+  const initialPanel = window.location.hash ? window.location.hash.slice(1) : '';
+  const knownPanels = ['clients', 'projects', 'designs-upload', 'payments-admin', 'collections', 'queries', 'estimator-config'];
+  if (knownPanels.includes(initialPanel)) showAdminPanel(initialPanel);
 });
 
 // Panel switching
@@ -431,7 +434,7 @@ function renderProjects(projects) {
     const isComplete = project.status === 'completed';
 
     const card = document.createElement('div');
-    card.className = 'proj-admin-card';
+    card.className = 'proj-admin-card is-clickable';
     card.innerHTML = `
       <div class="proj-admin-img"><img src="${imgSrc}" alt="Project" /></div>
       <div class="proj-admin-body">
@@ -456,8 +459,14 @@ function renderProjects(projects) {
         </div>
       </div>
     `;
+    card.addEventListener('click', () => openProjectFinancialDashboard(project._id));
+    card.querySelector('.proj-admin-actions')?.addEventListener('click', e => e.stopPropagation());
     grid.appendChild(card);
   });
+}
+
+function openProjectFinancialDashboard(projectId) {
+  window.location.href = `admin-project-financials.html?projectId=${encodeURIComponent(projectId)}`;
 }
 
 // ── CREATE CLIENT ──────────────────────────────────────────────

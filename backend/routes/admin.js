@@ -4,6 +4,7 @@ const nodemailer  = require('nodemailer');
 const PDFDocument = require('pdfkit');
 const fs          = require('fs');
 const path        = require('path');
+const mongoose    = require('mongoose');
 const User        = require('../models/User');
 const Project     = require('../models/Project');
 const Payment     = require('../models/Payment');
@@ -974,6 +975,141 @@ router.get('/payments/client/:clientId', async (req, res) => {
   try {
     const payments = await Payment.find({ clientId: req.params.clientId }).sort('-createdAt');
     res.json(payments);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// GET /api/admin/projects/:id/financial-dashboard
+// Dedicated per-project financial dashboard data. Existing payment/invoice flows are untouched.
+router.get('/projects/:id/financial-dashboard', async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: 'Invalid project id' });
+    }
+
+    const projectObjectId = new mongoose.Types.ObjectId(req.params.id);
+    const [projectResult, paymentTotals, payments] = await Promise.all([
+      Project.aggregate([
+        { $match: { _id: projectObjectId } },
+        {
+          $lookup: {
+            from: 'users',
+            let: { cid: '$clientId' },
+            pipeline: [
+              { $match: { $expr: { $eq: ['$_id', '$$cid'] } } },
+              { $project: { _id: 1, name: 1, email: 1, phone: 1 } },
+            ],
+            as: 'client',
+          },
+        },
+        {
+          $addFields: {
+            clientId: { $arrayElemAt: ['$client', 0] },
+            projectValue: {
+              $convert: {
+                input: '$totalCost',
+                to: 'double',
+                onError: 0,
+                onNull: 0,
+              },
+            },
+          },
+        },
+        { $project: { client: 0 } },
+      ]),
+      Payment.aggregate([
+        { $match: { projectId: projectObjectId } },
+        {
+          $addFields: {
+            normalizedType: {
+              $toLower: {
+                $trim: {
+                  input: {
+                    $convert: {
+                      input: { $ifNull: ['$type', 'income'] },
+                      to: 'string',
+                      onError: 'income',
+                      onNull: 'income',
+                    },
+                  },
+                },
+              },
+            },
+            numericAmount: {
+              $convert: {
+                input: '$amount',
+                to: 'double',
+                onError: 0,
+                onNull: 0,
+              },
+            },
+          },
+        },
+        { $match: { normalizedType: { $in: ['income', 'expense'] } } },
+        { $group: { _id: '$normalizedType', total: { $sum: '$numericAmount' } } },
+      ]),
+      Payment.aggregate([
+        { $match: { projectId: projectObjectId } },
+        {
+          $addFields: {
+            normalizedType: {
+              $toLower: {
+                $trim: {
+                  input: {
+                    $convert: {
+                      input: { $ifNull: ['$type', 'income'] },
+                      to: 'string',
+                      onError: 'income',
+                      onNull: 'income',
+                    },
+                  },
+                },
+              },
+            },
+            numericAmount: {
+              $convert: {
+                input: '$amount',
+                to: 'double',
+                onError: 0,
+                onNull: 0,
+              },
+            },
+          },
+        },
+        {
+          $project: {
+            amount: '$numericAmount',
+            type: '$normalizedType',
+            category: 1,
+            mode: 1,
+            description: 1,
+            paidAt: 1,
+            createdAt: 1,
+          },
+        },
+        { $sort: { createdAt: -1 } },
+      ]),
+    ]);
+
+    const project = projectResult[0];
+    if (!project) return res.status(404).json({ message: 'Project not found' });
+
+    const projectValue = project.projectValue || 0;
+    const totalExpenses = paymentTotals.find(r => r._id === 'expense')?.total || 0;
+    const clientPaymentsReceived = paymentTotals.find(r => r._id === 'income')?.total || 0;
+    const isOverBudget = totalExpenses > projectValue || totalExpenses > clientPaymentsReceived;
+
+    res.json({
+      project,
+      summary: {
+        projectValue,
+        totalExpenses,
+        clientPaymentsReceived,
+        isOverBudget,
+      },
+      payments,
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

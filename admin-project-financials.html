@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Project Financial Dashboard - AARAV Interiors</title>
+  <link rel="stylesheet" href="css/design-system.css" />
+  <link rel="stylesheet" href="css/dashboard.css" />
+  <link rel="stylesheet" href="css/admin.css" />
+  <link rel="icon" type="image/jpeg" href="assets/images/logo.jpeg" />
+</head>
+<body class="dashboard-body">
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <a href="index.html" class="sidebar-logo">
+      <img src="assets/images/logo.jpeg" alt="AARAV" />
+      <span>ADMIN <span class="text-gold">PANEL</span></span>
+    </a>
+  </div>
+  <nav class="sidebar-nav">
+    <button class="sidebar-link" onclick="goAdminPanel('clients')">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+      Clients
+    </button>
+    <button class="sidebar-link active" onclick="goAdminPanel('projects')">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      Projects
+    </button>
+    <button class="sidebar-link" onclick="goAdminPanel('designs-upload')">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0018 9h-1.26A8 8 0 103 16.3"/></svg>
+      Upload Designs
+    </button>
+    <button class="sidebar-link" onclick="goAdminPanel('payments-admin')">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+      Payments
+    </button>
+    <button class="sidebar-link" onclick="goAdminPanel('collections')">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+      Collections
+    </button>
+    <button class="sidebar-link" onclick="goAdminPanel('queries')">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+      Queries
+    </button>
+    <button class="sidebar-link" onclick="goAdminPanel('estimator-config')">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+      Estimator Config
+    </button>
+    <div class="sidebar-link" style="margin-top:auto;">
+      <a href="index.html" style="color:inherit;display:flex;gap:0.85rem;align-items:center">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+        View Website
+      </a>
+    </div>
+  </nav>
+  <div class="sidebar-user">
+    <div class="user-avatar">A</div>
+    <div class="user-info"><div class="user-name">Admin User</div><div class="user-role">Administrator</div></div>
+    <button class="logout-btn" onclick="Auth.logout()">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+    </button>
+  </div>
+</aside>
+
+<button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()">☰</button>
+
+<main class="dashboard-main">
+  <header class="dash-topbar">
+    <div class="dash-topbar-left"><h2 class="dash-page-title" id="projectFinancialTitle">Project Financial Dashboard</h2></div>
+    <div class="dash-topbar-right">
+      <button class="btn btn-outline" style="padding:0.45rem 1rem;font-size:0.72rem" onclick="goAdminPanel('projects')">Back to Projects</button>
+      <span class="badge">Admin</span>
+      <div class="dash-avatar">A</div>
+    </div>
+  </header>
+
+  <section class="panel active" id="projectFinancialPanel">
+    <div class="admin-header-row">
+      <div>
+        <h3 class="dash-card-title" id="projectFinancialName">Loading...</h3>
+        <div class="proj-admin-client" id="projectFinancialClient"></div>
+      </div>
+    </div>
+
+    <div class="panel-grid-3 mb-4">
+      <div class="stat-card"><div class="stat-card-val text-gold" id="pf_project_value">₹0</div><div class="stat-card-label">PROJECT VALUE</div></div>
+      <div class="stat-card"><div class="stat-card-val" style="color:#FF6B6B" id="pf_total_expenses">₹0</div><div class="stat-card-label">TOTAL EXPENSES</div></div>
+      <div class="stat-card"><div class="stat-card-val" style="color:#4CAF50" id="pf_income_received">₹0</div><div class="stat-card-label">CLIENT PAYMENTS RECEIVED</div></div>
+    </div>
+
+    <div class="profit-loss-card mb-4" id="pf_profit_loss_card">
+      <div class="stat-card-label">PROFIT / LOSS</div>
+      <div class="profit-loss-val" id="pf_profit_loss">₹0</div>
+    </div>
+
+    <div class="financial-health-card mb-4" id="pf_health_card">
+      <div class="financial-health-status" id="pf_health_status">HEALTHY</div>
+      <div class="financial-health-title" id="pf_health_title">Project Financials Healthy</div>
+      <div class="financial-health-copy" id="pf_health_copy"></div>
+    </div>
+
+    <div class="dash-card">
+      <div class="dash-card-header"><h3 class="dash-card-title">PROJECT PAYMENT HISTORY</h3></div>
+      <div class="dash-card-body" style="padding:0;overflow-x:auto">
+        <table class="pay-table admin-table">
+          <thead><tr><th>Date</th><th>Type</th><th>Category</th><th>Mode</th><th>Description</th><th>Amount</th></tr></thead>
+          <tbody id="projectFinancialPaymentsBody">
+            <tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:2rem">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script src="js/main.js"></script>
+<script src="js/project-financials.js"></script>
+
+</body>
+</html>
