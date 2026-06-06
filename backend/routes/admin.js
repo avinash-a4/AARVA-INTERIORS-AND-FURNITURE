@@ -208,13 +208,12 @@ function _buildLedgerPDF(payments, clientName, projectTitle, ledgerNumber, outst
        .text('PAYMENT HISTORY', M, y, { lineBreak: false });
     y += 16; doc.rect(M, y, W - M*2, 1.5).fill(GOLD); y += 10;
 
-    // Column widths: Date | Type | Category | Mode | Description | Amount
+    // Column widths: Date | Category | Mode | Description | Amount
     const cols = [
       { label: 'Date',        w: 78  },
-      { label: 'Type',        w: 60  },
-      { label: 'Category',    w: 70  },
-      { label: 'Mode',        w: 60  },
-      { label: 'Description', w: 130 },
+      { label: 'Category',    w: 100 },
+      { label: 'Mode',        w: 75  },
+      { label: 'Description', w: 145 },
       { label: 'Amount',      w: 82  },
     ];
     const tableW = cols.reduce((s,c) => s+c.w, 0); // 480
@@ -257,18 +256,15 @@ function _buildLedgerPDF(payments, clientName, projectTitle, ledgerNumber, outst
         ? new Date(p.paidAt || p.createdAt).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' })
         : '—';
 
-      // Determine type label
-      const isCol = p.invoiceType === 'collection' || (p.description||'').startsWith('[Collection]');
+      // Determine expense state for amount colouring
       const isExp = p.invoiceType === 'expense' || p.type === 'expense';
-      const typeLabel = isCol ? 'Collection' : isExp ? 'Expense' : 'Income';
-      const typeColor = isCol ? '#64B4FF' : isExp ? '#ff6b6b' : '#4CAF50';
 
       const cat  = p.category    || 'Other';
       const mode = p.mode        || 'Other';
       const desc = p.description || '—';
       const amt  = `${(p.amount || 0).toLocaleString('en-IN')}`;
 
-      const rowData = [dateStr, typeLabel, cat, mode, desc, amt];
+      const rowData = [dateStr, cat, mode, desc, amt];
       let cx = tX + 6;
       rowData.forEach((val, ci) => {
         const col = cols[ci];
@@ -277,14 +273,8 @@ function _buildLedgerPDF(payments, clientName, projectTitle, ledgerNumber, outst
         const textColor = isAmtCol ? (isExp ? '#ff6b6b' : '#1A1A2E') : DTEXT;
         const align = isAmtCol ? 'right' : 'left';
         const textX = isAmtCol ? cx : cx;
-        if (ci === 1) {
-          // Type column — coloured badge text
-          doc.fillColor(typeColor).font('Helvetica-Bold').fontSize(7.5)
-             .text(val, textX, y + 7, { width: col.w - 8, lineBreak: false });
-        } else {
-          doc.fillColor(textColor).font(isAmtCol ? 'Helvetica-Bold' : 'Helvetica').fontSize(7.5)
-             .text(val, textX, y + 7, { width: col.w - (isAmtCol ? 10 : 6), align, lineBreak: false });
-        }
+        doc.fillColor(textColor).font(isAmtCol ? 'Helvetica-Bold' : 'Helvetica').fontSize(7.5)
+           .text(val, textX, y + 7, { width: col.w - (isAmtCol ? 10 : 6), align, lineBreak: false });
         cx += col.w;
       });
       y += ROW_H;
