@@ -510,6 +510,7 @@ async function createProject(e) {
     toggleModal('createProjectModal');
     e.target.reset();
     await loadProjects();
+    await loadAdminPaymentSummaryCards();
   } catch (err) {
     if (err.message?.includes('401')) { Auth.logout(); return; }
     showToast(`✗ ${err.message || 'Failed to create project'}`, 'error');
@@ -725,20 +726,10 @@ async function loadAdminPayments() {
     const tbody = document.getElementById('adminPaymentsBody');
     if (!tbody) return;
 
-    // Stat accumulators — ONLY count payments linked to still-existing projects
-    let totalIncome = 0;
-    let totalExpenses = 0;
     tbody.innerHTML = '';
 
     payments.forEach(p => {
-      const isIncome  = (p.type || 'income') === 'income';
       const isExpense = p.type === 'expense';
-
-      // ── Live financial cards: only active (non-orphaned) payments count ──────
-      // p.projectId is null when the project was deleted (lookup returned nothing)
-      const isActive = !!p.projectId;
-      if (isActive && isIncome)  totalIncome   += p.amount ?? 0;
-      if (isActive && isExpense) totalExpenses += p.amount ?? 0;
 
       const cat = p.category || 'Other';
       const dateStr = p.paidAt
@@ -776,33 +767,72 @@ async function loadAdminPayments() {
         </tr>`);
     });
 
-    const profit = totalIncome - totalExpenses;
-    const el = (id) => document.getElementById(id);
-
-    if (el('pay_total')) {
-      el('pay_total').textContent = '\u20b9 ' + formatAdminINR(totalIncome);
-      if (el('pay_total').nextElementSibling) el('pay_total').nextElementSibling.textContent = 'Total Income';
-    }
-    if (el('pay_collected')) {
-      el('pay_collected').textContent = '\u20b9 ' + formatAdminINR(totalExpenses);
-      if (el('pay_collected').nextElementSibling) el('pay_collected').nextElementSibling.textContent = 'Total Expenses';
-    }
-    if (el('pay_pending')) {
-      el('pay_pending').textContent = (profit >= 0 ? '\u20b9 ' : '\u2013\u20b9 ') + formatAdminINR(Math.abs(profit));
-      el('pay_pending').style.color = profit >= 0 ? '#4CAF50' : '#ff6b6b';
-      if (el('pay_pending').nextElementSibling) el('pay_pending').nextElementSibling.textContent = 'Net Profit';
-    }
+    await loadAdminPaymentSummaryCards(payments);
   } catch (err) {
     if (err.message?.includes('401')) { Auth.logout(); return; }
     console.warn('Admin payments load error:', err.message);
   }
 }
 
-function formatAdminINR(n) {
-  if (!n) return '0';
-  if (n >= 100000) return (n / 100000).toFixed(1).replace(/\.0$/, '') + 'L';
-  if (n >= 1000)   return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
-  return n.toString();
+async function loadAdminPaymentSummaryCards(paymentsForFallback) {
+  try {
+    const summary = await getAdminPaymentSummary(paymentsForFallback);
+    const totalProjectValue = Number(summary.totalProjectValue) || 0;
+    const amountReceived = Number(summary.amountReceived) || 0;
+    const pendingAmount = Number(summary.pendingAmount) || 0;
+    const el = (id) => document.getElementById(id);
+
+    if (el('pay_total')) {
+      el('pay_total').textContent = formatAdminCurrency(totalProjectValue);
+      if (el('pay_total').nextElementSibling) el('pay_total').nextElementSibling.textContent = 'TOTAL PROJECT VALUE';
+    }
+    if (el('pay_collected')) {
+      el('pay_collected').textContent = formatAdminCurrency(amountReceived);
+      if (el('pay_collected').nextElementSibling) el('pay_collected').nextElementSibling.textContent = 'AMOUNT RECEIVED';
+    }
+    if (el('pay_pending')) {
+      el('pay_pending').textContent = formatAdminCurrency(pendingAmount);
+      if (el('pay_pending').nextElementSibling) el('pay_pending').nextElementSibling.textContent = 'PENDING AMOUNT';
+    }
+  } catch (err) {
+    if (err.message?.includes('401')) { Auth.logout(); return; }
+    console.warn('Admin payment summary load error:', err.message);
+  }
+}
+
+async function getAdminPaymentSummary(paymentsForFallback) {
+  try {
+    return await API.get('/admin/payments/summary');
+  } catch (err) {
+    console.warn('Admin payment summary endpoint unavailable; using existing project/payment data:', err.message);
+  }
+
+  const [projects, payments] = await Promise.all([
+    API.get('/admin/projects'),
+    paymentsForFallback ? Promise.resolve(paymentsForFallback) : API.get('/admin/payments'),
+  ]);
+
+  const totalProjectValue = projects.reduce((sum, project) => sum + toAdminNumber(project.totalCost), 0);
+  const amountReceived = payments.reduce((sum, payment) => {
+    const type = String(payment.type || 'income').trim().toLowerCase();
+    return type === 'income' ? sum + toAdminNumber(payment.amount) : sum;
+  }, 0);
+
+  return {
+    totalProjectValue,
+    amountReceived,
+    pendingAmount: totalProjectValue - amountReceived,
+  };
+}
+
+function toAdminNumber(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function formatAdminCurrency(n) {
+  const amount = Number(n) || 0;
+  return (amount < 0 ? '-\u20b9' : '\u20b9') + Math.abs(amount).toLocaleString('en-IN');
 }
 
 async function openPaymentModal() {
@@ -849,8 +879,8 @@ async function submitPayment(e) {
     showToast('\u2713 ' + label, 'success');
     closePaymentModal();
     e.target.reset();
-    loadAdminPayments();
-    loadProjects();
+    await loadAdminPayments();
+    await loadProjects();
   } catch (err) {
     if (err.message?.includes('401')) { Auth.logout(); return; }
     showToast(`\u2717 ${err.message || 'Failed to record payment'}`, 'error');

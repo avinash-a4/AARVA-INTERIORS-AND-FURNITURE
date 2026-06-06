@@ -609,6 +609,75 @@ router.post('/projects/:id/designs/upload', upload.single('file'), async (req, r
   }
 });
 
+// GET /api/admin/payments/summary
+// Top-level payment dashboard cards derived from Projects + income Payments.
+router.get('/payments/summary', async (req, res) => {
+  try {
+    const [projectValueResult, amountReceivedResult] = await Promise.all([
+      Project.aggregate([
+        {
+          $group: {
+            _id: null,
+            totalProjectValue: {
+              $sum: {
+                $convert: {
+                  input: '$totalCost',
+                  to: 'double',
+                  onError: 0,
+                  onNull: 0,
+                },
+              },
+            },
+          },
+        },
+      ]),
+      Payment.aggregate([
+        {
+          $addFields: {
+            _normalizedType: {
+              $toLower: {
+                $trim: {
+                  input: {
+                    $convert: {
+                      input: { $ifNull: ['$type', 'income'] },
+                      to: 'string',
+                      onError: 'income',
+                      onNull: 'income',
+                    },
+                  },
+                },
+              },
+            },
+            _numericAmount: {
+              $convert: {
+                input: '$amount',
+                to: 'double',
+                onError: 0,
+                onNull: 0,
+              },
+            },
+          },
+        },
+        { $match: { _normalizedType: 'income' } },
+        {
+          $group: {
+            _id: null,
+            amountReceived: { $sum: '$_numericAmount' },
+          },
+        },
+      ]),
+    ]);
+
+    const totalProjectValue = projectValueResult[0]?.totalProjectValue || 0;
+    const amountReceived = amountReceivedResult[0]?.amountReceived || 0;
+    const pendingAmount = totalProjectValue - amountReceived;
+
+    res.json({ totalProjectValue, amountReceived, pendingAmount });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // GET /api/admin/payments
 // Audit table — ALL payments are always returned regardless of project/client existence.
 // $lookup is LEFT JOIN by nature; missing project/client produces empty array → $arrayElemAt
